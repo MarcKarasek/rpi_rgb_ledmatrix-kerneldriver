@@ -10,7 +10,7 @@ was done on a Raspbian system.
 You will need to follow the instructions at the following website:
 https://github.com/notro/rpi-source/wiki
 
-Another good wwebsite with some additional info on gettign kernel headers:
+Another good website with some additional info on gettign kernel headers:
 
 http://stackoverflow.com/questions/20167411/how-to-compile-a-kernel-module-for-raspberry-pi
 
@@ -32,3 +32,6 @@ Compiled and testesd with the following configuration:
 Linux version 4.1.20-v7+ (dc4@dc4-XPS13-9333) (gcc version 4.9.3 (crosstool-NG crosstool-ng-1.22.0-88-g8460611) ) #867 SMP Wed Mar 23 20:12:32 GMT 2016
 
 gcc (Raspbian 4.9.2-10) 4.9.2
+
+In order for udev to correctly create the /dev/gpioleddriver device, you will need to copy the 10.local.rules file in the repository to
+you local /etc/udev/rules.d
