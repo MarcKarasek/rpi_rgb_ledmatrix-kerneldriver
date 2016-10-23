@@ -27,7 +27,7 @@
       unsigned int unused5 : 2;             // 24-25
       unsigned int b : 1;                   // 26
       unsigned int c : 1;                   // 27
-      unsigned int unused6 : 4;             // 28 - 31  
+      unsigned int unused6 : 4;             // 28 - 31
     } bits;
 #else
     struct {
@@ -56,9 +56,12 @@
 
 
 // Pass in set_pixel vlaues.
-// This will be used ofr both the SetPixel() and Fill() APIs.
+// This will be used for both the SetPixel() and Fill() APIs.
 struct set_bits
 {
+    // netopcode only used for Web Client
+    unsigned char  netopcode;
+    unsigned char rsvd[3];
     uint32_t value;
     uint32_t mask;
 };
@@ -75,6 +78,15 @@ struct value_at
 
 struct value_at vat;
 
+struct net_value
+{
+    unsigned char  netopcode;
+    unsigned char rsvd[3];
+    int value;
+};
+
+struct net_value nval;
+
 int value;
 
 /*
@@ -87,7 +99,11 @@ int value;
 #define LED_WRMSKBITS   _IOW(LED_IOC_MAGIC,  1, struct set_bits)
 #define LED_CLRBITS     _IOW(LED_IOC_MAGIC,  2, int)
 #define LED_SETBITS     _IOW(LED_IOC_MAGIC,  3, int)
-#define LED_VALUEAT     _IOWR(LED_IOC_MAGIC, 4, struct value_at)        
+#define LED_VALUEAT     _IOWR(LED_IOC_MAGIC, 4, struct value_at)
 #define LED_IOC_MAXNR 4
+
+#define NET_CLRBITS 0x10
+#define NET_SETBITS 0x11
+#define NET_WRMSKBITS 0x12
 
 #endif //_KMODCOMMON_H_

@@ -335,6 +335,7 @@ long led_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
               printk(KERN_EMERG  "Parameter Error: LED_CLRBITS\n");
               break;
           }
+          printk(KERN_EMERG  "Clr Value %x\n", value);
           ClearBits(value);
           break;
 
@@ -346,6 +347,7 @@ long led_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
               printk(KERN_EMERG  "Parameter Error: LED_SETBITS\n");
               break;
           }
+          printk(KERN_EMERG  "Setup Value %x\n", value);
           SetBits(value);
           break;
 

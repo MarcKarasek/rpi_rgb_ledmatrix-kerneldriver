@@ -6,7 +6,7 @@
 OBJECTS=led-matrix.o framebuffer.o thread.o bdf-font.o graphics.o
 TARGET=librgbmatrix.a
 
-#gpio.o 
+#gpio.o
 
 # If you see that your display is inverse, you might have a matrix variant
 # has uses inverse logic for the RGB bits. Attempt this
@@ -15,7 +15,7 @@ TARGET=librgbmatrix.a
 DEFINES+=-DADAFRUIT_RGBMATRIX_HAT
 
 INCDIR=../include
-CXXFLAGS=-Wall -O3 -g $(DEFINES)
+CXXFLAGS=-Wall -O3 -g $(DEFINES) $(WEBDEF)
 
 $(TARGET) : $(OBJECTS)
 	ar rcs $@ $^

@@ -1,0 +1,41 @@
+CXXFLAGS=-Wall -O3 -g -fno-strict-aliasing
+WEBBINARIES=web-matrix ledwebsrvr
+
+# Where our library resides. It is split between includes and the binary
+# library in lib
+RGB_INCDIR=include
+RGB_LIBDIR=lib
+RGB_LIBRARY_NAME=rgbmatrix
+RGB_LIBRARY=$(RGB_LIBDIR)/lib$(RGB_LIBRARY_NAME).a
+
+# Socket Libary for Webclient / Server Access
+SOCKET_LIBDIR=webinterface
+SOCKET_LIBRARY_NAME=practicalsocket
+SOCKET_LIBRARY=$(SOCKET_LIBDIR)/lib$(SOCKET_LIBRARY_NAME).a
+
+LDFLAGS+=-L$(RGB_LIBDIR) -l$(RGB_LIBRARY_NAME) -L$(SOCKET_LIBDIR) -l$(SOCKET_LIBRARY_NAME) -lrt -lm -lpthread
+
+# Uncomment this to build the webclient / server
+CXXFLAGS+=-DUDP_SCKT_INTERFACE
+
+all : $(WEBBINARIES)
+
+$(RGB_LIBRARY): Makefile.webapp
+	$(MAKE) -C $(RGB_LIBDIR) WEBDEF=-DUDP_SCKT_INTERFACE
+
+$(SOCKET_LIBRARY) : Makefile.webapp
+	$(MAKE) -C $(SOCKET_LIBDIR) -f Makefile
+
+web-matrix : demo-web.o $(RGB_LIBRARY) $(SOCKET_LIBRARY)
+	$(CXX) $(CXXFLAGS) demo-web.o -o $@ $(LDFLAGS)
+
+ledwebsrvr : websrvr.o $(RGB_LIBRARY) $(SOCKET_LIBRARY)
+	$(CXX) $(CXXFLAGS) websrvr.o -o $@ $(LDFLAGS)
+
+%.o : %.cc
+	$(CXX) -I$(RGB_INCDIR) $(CXXFLAGS) -DADAFRUIT_RGBMATRIX_HAT -c -o $@ $<
+
+clean:
+	rm -f *.o $(OBJECTS) $(BINARIES)
+	$(MAKE) -C $(RGB_LIBDIR) clean
+	$(MAKE) -C $(SOCKET_LIBDIR) -f Makefile clean

@@ -13,6 +13,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://gnu.org/licenses/gpl-2.0.txt>
 
+#ifdef UDP_SCKT_INTERFACE
+#include "../webinterface/PracticalSocket.h"      // For UDPSocket and SocketException
+#endif
+
 #include "led-matrix.h"
 
 #include <assert.h>
@@ -25,6 +29,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
+#include <iostream>
 
 #define SHOW_REFRESH_RATE 0
 
@@ -36,7 +41,10 @@
 #include "thread.h"
 #include "framebuffer-internal.h"
 
+
+#ifndef UDP_SCKT_INTERFACE
 #define DEVICE_PATH "/dev/gpioleddrvr"
+#endif
 
 namespace rgb_matrix {
 
@@ -76,35 +84,63 @@ private:
   bool running_;
   RGBMatrix *const matrix_;
 };
-
+#ifdef UDP_SCKT_INTERFACE
+RGBMatrix::RGBMatrix(int rows, int chained_displays)
+  : frame_(new Framebuffer(rows, 32 * chained_displays)),
+    updater_(NULL) {
+}
+#else
 RGBMatrix::RGBMatrix(int rows, int chained_displays)
   : frame_(new Framebuffer(rows, 32 * chained_displays)),
     fd_(0), updater_(NULL) {
-    SetGPIO();
 }
-
+#endif
 RGBMatrix::~RGBMatrix() {
   updater_->Stop();
   updater_->WaitStopped();
   delete updater_;
 
   frame_->Clear();
+#ifdef UDP_SCKT_INTERFACE
+ frame_->DumpToMatrix(host_, port_);
+#else
   frame_->DumpToMatrix(fd_);
+#endif
   delete frame_;
+#ifndef UDP_SCKT_INTERFACE
   close(fd_);
+#endif
 }
 
-void RGBMatrix::SetGPIO(void) {
+#ifdef UDP_SCKT_INTERFACE
+// Web UDP Client Code
+void RGBMatrix::SetNetInterface(string host, unsigned short port ) {
+
+    // Set Server and Port to use for Web Interface
+    host_.assign(host);
+    port_ = port;
+    cout<<"Server Address "<<host_<<" Port "<<port_<<endl;
+
+    updater_ = new UpdateThread(this);
+    updater_->Start(99);  // Whatever we get :)
+}
+// GPIO code
+#else
+bool RGBMatrix::SetGPIO(void) {
   // Open up the GPIO Led Device Driver
   fd_ = open("/dev/gpioleddrvr", O_RDWR);
   if (fd_ == -1)
   {
       printf("Error Opening Led Driver /dev/gpioleddrvr %x ", errno);
-   //   return;  //Problem with Driver juts return.
+      return false;  //Problem with Driver just return.
   }
   updater_ = new UpdateThread(this);
   updater_->Start(99);  // Whatever we get :)
+  return true;
 }
+#endif
+
+
 
 bool RGBMatrix::SetPWMBits(uint8_t value) { return frame_->SetPWMBits(value); }
 uint8_t RGBMatrix::pwmbits() { return frame_->pwmbits(); }
@@ -114,7 +150,11 @@ void RGBMatrix::set_luminance_correct(bool on) {
   frame_->set_luminance_correct(on);
 }
 bool RGBMatrix::luminance_correct() const { return frame_->luminance_correct(); }
+#ifdef UDP_SCKT_INTERFACE
+void RGBMatrix::UpdateScreen() { frame_->DumpToMatrix(host_, port_); }
+#else
 void RGBMatrix::UpdateScreen() { frame_->DumpToMatrix(fd_); }
+#endif
 
 // -- Implementation of RGBMatrix Canvas: delegation to ContentBuffer
 int RGBMatrix::width() const { return frame_->width(); }

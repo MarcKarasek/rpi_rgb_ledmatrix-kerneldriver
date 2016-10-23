@@ -22,6 +22,8 @@
 #include "gpio.h"
 #include "canvas.h"
 
+#include <string>            // For string
+
 namespace rgb_matrix {
 // The RGB matrix provides the framebuffer and the facilities to constantly
 // update the LED matrix.
@@ -35,9 +37,17 @@ public:
   RGBMatrix(int rows = 32, int chained_displays = 1);
   virtual ~RGBMatrix();
 
-  // Set GPIO output if it was not set already in constructor (oterwise: no-op).
-  // Starts display refresh thread if this is the first setting.
-  void SetGPIO(void);
+#ifdef UDP_SCKT_INTERFACE
+  // Set the Server Address and Port for the Web interface
+  // Only called when we are a network client
+  // Starts display refresh thread
+  void SetNetInterface( std::string host, unsigned short port );
+#else
+  // Set GPIO output
+  // Starts display refresh thread
+  // returns true = setup ok, false = setup failed
+  bool SetGPIO(void);
+#endif
 
   // Set PWM bits used for output. Default is 11, but if you only deal with
   // simple comic-colors, 1 might be sufficient. Lower require less CPU.
@@ -66,9 +76,14 @@ private:
 
   // Updates the screen regularly.
   void UpdateScreen();
-
-  Framebuffer *frame_;
+#ifdef UDP_SCKT_INTERFACE
+  std::string host_;
+  unsigned short port_;
+#else
   int fd_;
+#endif
+  Framebuffer *frame_;
+
   UpdateThread *updater_;
 };
 }  // end namespace rgb_matrix

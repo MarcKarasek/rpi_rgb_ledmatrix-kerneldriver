@@ -40,7 +40,12 @@ public:
   void set_luminance_correct(bool on) { do_luminance_correct_ = on; }
   bool luminance_correct() const { return do_luminance_correct_; }
 
-  void DumpToMatrix(int fd);
+  // We are either Dumping the Matrix to a UDP Socket or GPIOs
+#ifdef UDP_SCKT_INTERFACE
+    void DumpToMatrix(string host, unsigned short port);
+#else
+    void DumpToMatrix(int fd);
+#endif
 
   // Canvas-inspired methods, but we're not implementing this interface to not
   // have an unnecessary vtable.
@@ -51,6 +56,11 @@ public:
   void Fill(uint8_t red, uint8_t green, uint8_t blue);
 
 private:
+
+#ifdef UDP_SCKT_INTERFACE
+  UDPSocket sock;
+#endif
+
   // Map color
   inline uint16_t MapColor(uint8_t c);
 
