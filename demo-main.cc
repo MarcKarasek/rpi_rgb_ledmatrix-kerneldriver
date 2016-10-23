@@ -15,11 +15,15 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <iostream>
+#include <sstream>
+#include <string>            // For string
 #include <algorithm>
 
 using std::min;
 using std::max;
 
+using namespace std;
 using namespace rgb_matrix;
 
 // This is an example how to use the Canvas abstraction to map coordinates.
@@ -920,11 +924,6 @@ int main(int argc, char *argv[]) {
     demo_parameter = argv[optind];
   }
 
-  if (demo < 0) {
-    fprintf(stderr, "Expected required option -D <demo>\n");
-    return usage(argv[0]);
-  }
-
   if (rows != 16 && rows != 32) {
     fprintf(stderr, "Rows can either be 16 or 32\n");
     return 1;
@@ -949,6 +948,10 @@ int main(int argc, char *argv[]) {
 
   // The matrix, our 'frame buffer' and display updater.
   RGBMatrix *matrix = new RGBMatrix(rows, chain);
+  // Do setup and check for true/false for set  ok or not
+  if( !matrix->SetGPIO() )
+      return 1;
+
   matrix->set_luminance_correct(do_luminance_correct);
   if (pwm_bits >= 0 && !matrix->SetPWMBits(pwm_bits)) {
     fprintf(stderr, "Invalid range of pwm-bits\n");
@@ -962,80 +965,254 @@ int main(int argc, char *argv[]) {
     canvas = new LargeSquare64x64Canvas(canvas);
   }
 
-  // The ThreadedCanvasManipulator objects are filling
-  // the matrix continuously.
-  ThreadedCanvasManipulator *image_gen = NULL;
-  switch (demo) {
-  case 0:
-    image_gen = new RotatingBlockGenerator(canvas);
-    break;
+  if (as_daemon)
+  {
+      if (demo < 0) {
+          fprintf(stderr, "Expected required option -D <demo>\n");
+          return usage(argv[0]);
+      }
 
-  case 1:
-  case 2:
-    if (demo_parameter) {
-      ImageScroller *scroller = new ImageScroller(canvas,
-                                                  demo == 1 ? 1 : -1,
-                                                  scroll_ms);
-      if (!scroller->LoadPPM(demo_parameter))
-        return 1;
-      image_gen = scroller;
-    } else {
-      fprintf(stderr, "Demo %d Requires PPM image as parameter\n", demo);
-      return 1;
-    }
-    break;
+      // The ThreadedCanvasManipulator objects are filling
+      // the matrix continuously.
+      ThreadedCanvasManipulator *image_gen = NULL;
+      switch (demo) {
+      case 0:
+        image_gen = new RotatingBlockGenerator(canvas);
+        break;
 
-  case 3:
-    image_gen = new SimpleSquare(canvas);
-    break;
+      case 1:
+      case 2:
+        if (demo_parameter) {
+          ImageScroller *scroller = new ImageScroller(canvas,
+                                                      demo == 1 ? 1 : -1,
+                                                      scroll_ms);
+          if (!scroller->LoadPPM(demo_parameter))
+            return 1;
+          image_gen = scroller;
+        } else {
+          fprintf(stderr, "Demo %d Requires PPM image as parameter\n", demo);
+          return 1;
+        }
+        break;
 
-  case 4:
-    image_gen = new ColorPulseGenerator(canvas);
-    break;
+      case 3:
+        image_gen = new SimpleSquare(canvas);
+        break;
 
-  case 5:
-    image_gen = new GrayScaleBlock(canvas);
-    break;
+      case 4:
+        image_gen = new ColorPulseGenerator(canvas);
+        break;
 
-  case 6:
-    image_gen = new Sandpile(canvas, scroll_ms);
-    break;
+      case 5:
+        image_gen = new GrayScaleBlock(canvas);
+        break;
 
-  case 7:
-    image_gen = new GameLife(canvas, scroll_ms);
-    break;
+      case 6:
+        image_gen = new Sandpile(canvas, scroll_ms);
+        break;
 
-  case 8:
-    image_gen = new Ant(canvas, scroll_ms);
-    break;
+      case 7:
+        image_gen = new GameLife(canvas, scroll_ms);
+        break;
 
-  case 9:
-    image_gen = new VolumeBars(canvas, scroll_ms, canvas->width()/2);
-    break;
+      case 8:
+        image_gen = new Ant(canvas, scroll_ms);
+        break;
+
+      case 9:
+        image_gen = new VolumeBars(canvas, scroll_ms, canvas->width()/2);
+        break;
+      }
+
+
+      if (image_gen == NULL)
+          return usage(argv[0]);
+
+      // Image generating demo is created. Now start the thread.
+      image_gen->Start();
+
+      // Now, the image genreation runs in the background. We can do arbitrary
+      // things here in parallel. In this demo, we're essentially just
+      // waiting for one of the conditions to exit.
+      if (as_daemon) {
+          sleep(runtime_seconds > 0 ? runtime_seconds : INT_MAX);
+      } else if (runtime_seconds > 0) {
+          sleep(runtime_seconds);
+      } else {
+          // Things are set up. Just wait for <RETURN> to be pressed.
+          printf("Press <RETURN> to exit and reset LEDs\n");
+          getchar();
+      }
+      // Stop image generating thread.
+      delete image_gen;
+
+  }
+  else // if (as_daemon)
+  {
+      bool exit_pgm = false;
+      int choice = 0;
+      string strchoice;
+      string filename;
+      string ms;
+
+      while(!exit_pgm)
+      {
+          cout<<"Demo Menu"<<endl;
+          cout<<"***************"<<endl;
+          cout<<"0. rotating square"<<endl;
+          cout<<"1. forward scrolling an image"<<endl;
+          cout<<"2. backward scrolling an image"<<endl;
+          cout<<"3. test image: a square"<<endl;
+          cout<<"4. Pulsing color"<<endl;
+          cout<<"5. Pulsing color"<<endl;
+          cout<<"6. Abelian sandpile model (-m <time-step-ms>)"<<endl;
+          cout<<"7. Conway's game of life (-m <time-step-ms>)"<<endl;
+          cout<<"8. Langton's ant (-m <time-step-ms>)"<<endl;
+          cout<<"9. Volume bars (-m <time-step-ms>)"<<endl;
+          cout<<"10.Exit"<<endl;
+          cout<<"Enter Choice:"<<endl;
+          getline(cin, strchoice);
+          stringstream(strchoice) >> choice;
+
+          // Create the Image Thread
+          ThreadedCanvasManipulator *image_gen = NULL;
+
+          switch(choice)
+          {
+          case 0:
+              image_gen = new RotatingBlockGenerator(canvas);
+              break;
+
+          case 1:
+          case 2:
+              {
+                  cout<<"Enter filename: <cr to exit>"<<endl;
+                  getline(cin, filename);
+                  if(filename.empty())
+                  {
+                      break;
+                  }
+                  demo_parameter = filename.data();
+
+                  ImageScroller *scroller = new ImageScroller(canvas, demo == 1 ? 1 : -1, scroll_ms);
+                  if (!scroller->LoadPPM(demo_parameter))
+                  {
+                      cout<<"Could not find filename" << demo_parameter << endl;
+                      delete(scroller);
+                      break;
+                  }
+                  cout<<"Enter Scroll Time in ms: <cr for default>"<<endl;
+                  getline(cin, ms);
+                  if(!ms.empty())
+                  {
+                      stringstream convert(ms);
+                      if( !(convert >> scroll_ms))
+                          scroll_ms = 30;
+                  }
+                  else
+                      scroll_ms = 30;
+                  cout<<"Scroll Set to"<<scroll_ms<<endl;
+                  image_gen = scroller;
+              }
+              break;
+
+          case 3:
+              image_gen = new SimpleSquare(canvas);
+              break;
+
+          case 4:
+              image_gen = new ColorPulseGenerator(canvas);
+              break;
+
+          case 5:
+              image_gen = new GrayScaleBlock(canvas);
+              break;
+
+          case 6:
+              cout<<"Enter Time Step in ms: <cr for default>"<<endl;
+                  getline(cin, ms);
+                  if(!ms.empty())
+                  {
+                      stringstream convert(ms);
+                      if( !(convert >> scroll_ms))
+                          scroll_ms = 30;
+                  }
+                  else
+                      scroll_ms = 30;
+
+                  cout<<"Time Step Set to"<<scroll_ms<<endl;
+
+              image_gen = new Sandpile(canvas, scroll_ms);
+              break;
+
+          case 7:
+              cout<<"Enter Time Step in ms: <cr for default>"<<endl;
+                  getline(cin, ms);
+                  if(!ms.empty())
+                  {
+                      stringstream convert(ms);
+                      if( !(convert >> scroll_ms))
+                          scroll_ms = 30;
+                  }
+                  else
+                      scroll_ms = 30;
+
+                  cout<<"Time Step Set to"<<scroll_ms<<endl;
+              image_gen = new GameLife(canvas, scroll_ms);
+              break;
+
+          case 8:
+              cout<<"Enter Time Step in ms: <cr for default>"<<endl;
+                  getline(cin, ms);
+                  if(!ms.empty())
+                  {
+                      stringstream convert(ms);
+                      if( !(convert >> scroll_ms))
+                          scroll_ms = 30;
+                  }
+                  else
+                      scroll_ms = 30;
+
+                  cout<<"Time Step Set to"<<scroll_ms<<endl;
+              image_gen = new Ant(canvas, scroll_ms);
+              break;
+
+          case 9:
+              cout<<"Enter Time Step in ms: <cr for default>"<<endl;
+                  getline(cin, ms);
+                  if(!ms.empty())
+                  {
+                      stringstream convert(ms);
+                      if( !(convert >> scroll_ms))
+                          scroll_ms = 30;
+                  }
+                  else
+                      scroll_ms = 30;
+
+                  cout<<"Time Step Set to"<<scroll_ms<<endl;
+              image_gen = new VolumeBars(canvas, scroll_ms, canvas->width()/2);
+              break;
+
+          case 10:
+              exit_pgm = true;
+              break;
+          default:
+              cout<<"Invalid Option"<<endl;
+              break;
+          }
+          if (image_gen != NULL)
+          {
+                image_gen->Start();
+                // Things are set up. Just wait for <RETURN> to be pressed.
+                printf("Press <RETURN> to exit and reset LEDs\n");
+                getchar();
+                // Stop image generating thread.
+                delete image_gen;
+                canvas->Clear();
+          }
+      }
   }
 
-  if (image_gen == NULL)
-    return usage(argv[0]);
-
-  // Image generating demo is created. Now start the thread.
-  image_gen->Start();
-
-  // Now, the image genreation runs in the background. We can do arbitrary
-  // things here in parallel. In this demo, we're essentially just
-  // waiting for one of the conditions to exit.
-  if (as_daemon) {
-    sleep(runtime_seconds > 0 ? runtime_seconds : INT_MAX);
-  } else if (runtime_seconds > 0) {
-    sleep(runtime_seconds);
-  } else {
-    // Things are set up. Just wait for <RETURN> to be pressed.
-    printf("Press <RETURN> to exit and reset LEDs\n");
-    getchar();
-  }
-
-  // Stop image generating thread.
-  delete image_gen;
   delete canvas;
-
   return 0;
 }
