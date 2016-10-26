@@ -39,6 +39,10 @@ public:
   // Clear screen to be all black.
   virtual void Clear() = 0;
 
+#ifdef UDP_SCKT_INTERFACE
+  virtual void StopSrvr() = 0;
+#endif
+
   // Fill screen with given 24bpp color.
   virtual void Fill(uint8_t red, uint8_t green, uint8_t blue) = 0;
 };

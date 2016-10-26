@@ -40,6 +40,11 @@ public:
   void set_luminance_correct(bool on) { do_luminance_correct_ = on; }
   bool luminance_correct() const { return do_luminance_correct_; }
 
+// Cmd to stop server from Client
+#ifdef UDP_SCKT_INTERFACE
+    void KillSrvr(string host, unsigned short port);
+#endif
+
   // We are either Dumping the Matrix to a UDP Socket or GPIOs
 #ifdef UDP_SCKT_INTERFACE
     void DumpToMatrix(string host, unsigned short port);

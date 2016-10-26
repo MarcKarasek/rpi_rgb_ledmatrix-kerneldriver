@@ -164,7 +164,11 @@ void RGBMatrix::SetPixel(int x, int y,
   frame_->SetPixel(x, y, red, green, blue);
 }
 void RGBMatrix::Clear() { return frame_->Clear(); }
+#ifdef UDP_SCKT_INTERFACE
+void RGBMatrix::StopSrvr() { return frame_->KillSrvr(host_, port_); }
+#endif
 void RGBMatrix::Fill(uint8_t red, uint8_t green, uint8_t blue) {
   frame_->Fill(red, green, blue);
+  }
 }
-}  // end namespace rgb_matrix
+// end namespace rgb_matrix

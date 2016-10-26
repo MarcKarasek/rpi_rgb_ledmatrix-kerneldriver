@@ -47,6 +47,7 @@ public:
   virtual ~LargeSquare64x64Canvas() { delete delegatee_; }
 
   virtual void Clear() { delegatee_->Clear(); }
+  virtual void StopSrvr() { delegatee_->StopSrvr(); }
   virtual void Fill(uint8_t red, uint8_t green, uint8_t blue) {
     delegatee_->Fill(red, green, blue);
   }
@@ -1240,6 +1241,8 @@ int main(int argc, char *argv[]) {
           }
       }
   }
+  // Stop the server, send CMD to Server to Exit
+  canvas->StopSrvr();
 
   delete canvas;
   return 0;

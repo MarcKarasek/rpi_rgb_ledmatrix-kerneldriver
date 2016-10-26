@@ -25,6 +25,7 @@
 #include "kmod_common.h"
 #include "cie1931.h"
 
+
 /*
  * Our parameters which can be set at load time.
  */
@@ -335,7 +336,6 @@ long led_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
               printk(KERN_EMERG  "Parameter Error: LED_CLRBITS\n");
               break;
           }
-          printk(KERN_EMERG  "Clr Value %x\n", value);
           ClearBits(value);
           break;
 
@@ -347,7 +347,6 @@ long led_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
               printk(KERN_EMERG  "Parameter Error: LED_SETBITS\n");
               break;
           }
-          printk(KERN_EMERG  "Setup Value %x\n", value);
           SetBits(value);
           break;
 
@@ -739,6 +738,10 @@ int init_module(void)
             result = 1;
             goto fail;
         }
+// open up syslog
+#ifdef DEBUG
+        openlog("LedDriver", LOG_NDELAY, LOG_USER );
+#endif
 // Imalive()
 #ifdef IMALIVE
         // used by APIs to set/clear bits

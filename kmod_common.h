@@ -105,5 +105,6 @@ int value;
 #define NET_CLRBITS 0x10
 #define NET_SETBITS 0x11
 #define NET_WRMSKBITS 0x12
+#define NET_KILLSRVR 0x13
 
 #endif //_KMODCOMMON_H_

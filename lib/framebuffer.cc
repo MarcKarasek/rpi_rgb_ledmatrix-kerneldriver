@@ -187,6 +187,15 @@ void RGBMatrix::Framebuffer::SetPixel(int x, int y,
 }
 
 #ifdef UDP_SCKT_INTERFACE
+void RGBMatrix::Framebuffer::KillSrvr(string host, unsigned short port)
+{
+        nval.netopcode = NET_KILLSRVR;
+        nval.value = 0;
+        sock.sendTo(&nval, sizeof(net_value), host, port);
+}
+#endif
+
+#ifdef UDP_SCKT_INTERFACE
 void RGBMatrix::Framebuffer::DumpToMatrix(string host, unsigned short port) {
 #else
 void RGBMatrix::Framebuffer::DumpToMatrix(int fd) {

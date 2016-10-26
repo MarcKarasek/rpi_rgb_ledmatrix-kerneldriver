@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 #include <math.h>
 #include <asm/ioctl.h>
 #include <sys/ioctl.h>
@@ -53,11 +54,10 @@ int main(int argc, char *argv[]) {
   try {
     UDPSocket sock(LedSrvrPort);
 
-    char LedCMDBuff[CMDMAX];         // Buffer for echo string
+    char LedCMDBuff[CMDMAX];         // Buffer for rcv cmd
     int recvCmdSz;                  // Size of received message
     string sourceAddress;             // Address of datagram source
     unsigned short sourcePort;        // Port of datagram source
-    const unsigned int szset_bits = sizeof(set_bits), sznet_value = sizeof(net_value);
     cout << "Starting Server " << endl;
 
     // Run Until ^C
@@ -65,48 +65,42 @@ int main(int argc, char *argv[]) {
     {
       // Block until receive message from a client
       recvCmdSz = sock.recvFrom(LedCMDBuff, CMDMAX, sourceAddress, sourcePort);
+      // Check for an empty frame if we get one just loop back to the recvFrom() call
+      if (recvCmdSz == 0)
+      {
+          continue;
+      }
 
  //     cout << "Received packet from " << sourceAddress << ":"<< sourcePort << endl;
 
-      switch (recvCmdSz)
+      switch(LedCMDBuff[0])
       {
-      case szset_bits :
-              switch(LedCMDBuff[0])
-              {
-              case NET_WRMSKBITS :
-//                  cout<<"NET_WRMSKBITS"<<endl;
-                  pset_bits_vals = (struct set_bits *)(&LedCMDBuff[4]);
-//                  cout<<pset_bits_vals->value<<endl;
-//                  cout<<pset_bits_vals->mask<<endl;
-                  ioctl(fd, LED_WRMSKBITS, pset_bits_vals);
-                  break;
-              default :
-                  cout << "Invalid Net Cmd 1" << LedCMDBuff[0] << endl;
-                  break;
-              }
+      case NET_WRMSKBITS :
+          // cout<<"NET_WRMSKBITS"<<endl;
+          pset_bits_vals = (struct set_bits *)(&LedCMDBuff[0]);
+          // cout<<pset_bits_vals->value<<endl;
+          // cout<<pset_bits_vals->mask<<endl;
+          ioctl(fd, LED_WRMSKBITS, pset_bits_vals);
           break;
-      case sznet_value :
-          switch(LedCMDBuff[0])
-          {
-          case NET_SETBITS :
-//              cout<<"NET_SETBITS"<<endl;
-              pval = (int *)(&LedCMDBuff[4]);
-//              cout<<*pval<<endl;
-              ioctl(fd, LED_SETBITS,pval);
-              break;
-          case NET_CLRBITS :
-//              cout<<"NET_CLRBITS"<<endl;
-              pval = (int *)(&LedCMDBuff[4]);
-//              cout<<*pval<<endl;
-              ioctl(fd, LED_CLRBITS,pval);
-              break;
-          default :
-              cout << "Invalid Net Cmd 2" << LedCMDBuff[0] << endl;
-              break;
-          }
+      case NET_SETBITS :
+          // cout<<"NET_SETBITS"<<endl;
+          pval = (int *)(&LedCMDBuff[4]);
+          // cout<<*pval<<endl;
+          ioctl(fd, LED_SETBITS,pval);
           break;
-      default:
-          cout <<"Invalid Cmd Size " << recvCmdSz << endl;
+      case NET_CLRBITS :
+          // cout<<"NET_CLRBITS"<<endl;
+          pval = (int *)(&LedCMDBuff[4]);
+          // cout<<*pval<<endl;
+          ioctl(fd, LED_CLRBITS,pval);
+          break;
+      case NET_KILLSRVR :
+          cout<<"Stopping Server -- Rcvd Stop CMd from Client"<<endl;
+          close(fd);
+          exit(0);
+          break;
+      default :
+          cout << "Invalid Net Cmd 1" << LedCMDBuff[0] << endl;
           break;
       }
     }
