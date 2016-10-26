@@ -76,13 +76,14 @@ private:
 
   // Updates the screen regularly.
   void UpdateScreen();
+  Framebuffer *frame_;
 #ifdef UDP_SCKT_INTERFACE
   std::string host_;
   unsigned short port_;
 #else
   int fd_;
 #endif
-  Framebuffer *frame_;
+
 
   UpdateThread *updater_;
 };
