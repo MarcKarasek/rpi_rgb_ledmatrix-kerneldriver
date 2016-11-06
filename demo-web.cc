@@ -2,7 +2,8 @@
 //
 // This code is public domain
 // (but note, that the led-matrix library this depends on is GPL v2)
-
+#include "kmod_common.h"
+#include "web_defines.h"
 #include "led-matrix.h"
 #include "threaded-canvas-manipulator.h"
 
@@ -24,6 +25,7 @@ using std::min;
 using std::max;
 
 using namespace std;
+
 using namespace rgb_matrix;
 
 // This is an example how to use the Canvas abstraction to map coordinates.
@@ -872,6 +874,8 @@ int main(int argc, char *argv[]) {
   int pwm_bits = -1;
   bool large_display = false;
   bool do_luminance_correct = true;
+  struct net_parameters net_params;
+
 
   string host, port;
   string servAddress;
@@ -978,8 +982,19 @@ int main(int argc, char *argv[]) {
   // The matrix, our 'frame buffer' and display updater.
   RGBMatrix *matrix = new RGBMatrix(rows, chain);
 
+  net_params.netopcode = NET_INIT_PARAMS;
+  net_params.chain = chain;
+  net_params.rows = rows;
+  net_params.do_luminance_correct = do_luminance_correct;
+  net_params.large_display = large_display;
+  net_params.pwm_bits = pwm_bits;
+  net_params.runtime_seconds = runtime_seconds;
+  net_params.scroll_ms = scroll_ms;
+  net_params.demo = demo;
+
+
   // Set the web interface
-  matrix->SetNetInterface(host, portnum);
+  matrix->SetNetInterface(host, portnum, &net_params);
 
   matrix->set_luminance_correct(do_luminance_correct);
   if (pwm_bits >= 0 && !matrix->SetPWMBits(pwm_bits)) {

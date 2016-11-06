@@ -43,6 +43,11 @@ public:
 // Cmd to stop server from Client
 #ifdef UDP_SCKT_INTERFACE
     void KillSrvr(string host, unsigned short port);
+    bool SyncSrvr(string host, unsigned short port, struct net_parameters * params);
+#endif
+
+#ifdef UDP_SCKT_INTERFACE
+void DumpToWeb(string host, unsigned short port);
 #endif
 
   // We are either Dumping the Matrix to a UDP Socket or GPIOs
@@ -64,6 +69,11 @@ private:
 
 #ifdef UDP_SCKT_INTERFACE
   UDPSocket sock;
+
+  struct net_value nval;
+  int value;
+  struct set_bits set_bits_vals;
+
 #endif
 
   // Map color

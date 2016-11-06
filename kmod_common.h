@@ -1,7 +1,6 @@
 #ifndef _KMODCOMMON_H_
 #define _KMODCOMMON_H_
 
-
 #define DEVICE_PATH "/dev/gpioleddrvr"
 
   union IoBits {
@@ -51,8 +50,9 @@
       unsigned int unused5 : 6;              // 26-31
     } bits;
 #endif
-    uint32_t raw;
-  } Io_Bits;
+    unsigned int  raw;
+  } ;
+  //Io_Bits;
 
 
 // Pass in set_pixel vlaues.
@@ -62,11 +62,9 @@ struct set_bits
     // netopcode only used for Web Client
     unsigned char  netopcode;
     unsigned char rsvd[3];
-    uint32_t value;
-    uint32_t mask;
+    unsigned int  value;
+    unsigned int  mask;
 };
-
-struct set_bits set_bits_vals;
 
 struct value_at
 {
@@ -76,18 +74,12 @@ struct value_at
     int bit;
 };
 
-struct value_at vat;
-
 struct net_value
 {
     unsigned char  netopcode;
     unsigned char rsvd[3];
     int value;
 };
-
-struct net_value nval;
-
-int value;
 
 /*
  * Ioctl definitions
@@ -101,10 +93,5 @@ int value;
 #define LED_SETBITS     _IOW(LED_IOC_MAGIC,  3, int)
 #define LED_VALUEAT     _IOWR(LED_IOC_MAGIC, 4, struct value_at)
 #define LED_IOC_MAXNR 4
-
-#define NET_CLRBITS 0x10
-#define NET_SETBITS 0x11
-#define NET_WRMSKBITS 0x12
-#define NET_KILLSRVR 0x13
 
 #endif //_KMODCOMMON_H_

@@ -41,7 +41,7 @@ public:
   // Set the Server Address and Port for the Web interface
   // Only called when we are a network client
   // Starts display refresh thread
-  void SetNetInterface( std::string host, unsigned short port );
+  void SetNetInterface( std::string host, unsigned short port, struct net_parameters *params );
 #else
   // Set GPIO output
   // Starts display refresh thread

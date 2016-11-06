@@ -29,8 +29,10 @@ $(SOCKET_LIBRARY) : Makefile.webapp
 web-matrix : demo-web.o $(RGB_LIBRARY) $(SOCKET_LIBRARY)
 	$(CXX) $(CXXFLAGS) demo-web.o -o $@ $(LDFLAGS)
 
-ledwebsrvr : websrvr.o $(RGB_LIBRARY) $(SOCKET_LIBRARY)
+ledwebsrvr : websrvr.o $(SOCKET_LIBRARY)
 	$(CXX) $(CXXFLAGS) websrvr.o -o $@ $(LDFLAGS)
+
+#$(RGB_LIBRARY)
 
 %.o : %.cc
 	$(CXX) -I$(RGB_INCDIR) $(CXXFLAGS) -DADAFRUIT_RGBMATRIX_HAT -c -o $@ $<

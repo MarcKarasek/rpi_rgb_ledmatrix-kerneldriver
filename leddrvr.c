@@ -25,6 +25,10 @@
 #include "kmod_common.h"
 #include "cie1931.h"
 
+union IoBits Io_Bits;
+struct value_at vat;
+struct set_bits set_bits_vals;
+int value;
 
 /*
  * Our parameters which can be set at load time.
@@ -67,7 +71,6 @@ int led_nr_devs = LED_NR_DEVS;	/* number of bare led devices */
 
 static const long kBaseTimeNanos = 200;
 
-volatile uint32_t *freeRunTimer = NULL; // GPIO may override on startup
 
 module_param(led_major, int, S_IRUGO);
 module_param(led_minor, int, S_IRUGO);
@@ -414,16 +417,6 @@ uint16_t MapColor(uint8_t c)
 #undef COLOR_OUT_BITS
 }
 
-void Clear( void )
-{
-#ifdef INVERSE_RGB_DISPLAY_COLORS
-  Fill(0, 0, 0);
-#else
-  memset(bitplane_buffer_ptr, 0,
-         sizeof(Io_Bits) * double_rows * columns * kBitPlanes);
-#endif
-}
-
 void Fill(uint8_t r, uint8_t g, uint8_t b)
 {
     int x, col, row;
@@ -450,6 +443,16 @@ void Fill(uint8_t r, uint8_t g, uint8_t b)
       }
     }
   }
+}
+
+void Clear( void )
+{
+#ifdef INVERSE_RGB_DISPLAY_COLORS
+  Fill(0, 0, 0);
+#else
+  memset(bitplane_buffer_ptr, 0,
+         sizeof(Io_Bits) * double_rows * columns * kBitPlanes);
+#endif
 }
 
 static void sleep_nanos(long nanos)
@@ -773,7 +776,7 @@ int init_module(void)
         alive = kthread_run(&imalive,NULL,"imalive");
 
         // This is the mutex used for imalive().
-        // Once we are down with imalive() it is destroyed..
+        // Once we are done with imalive() it is destroyed..
         mutex_init( &(led_device->alive_mutex) );
 
         // Fill with Red

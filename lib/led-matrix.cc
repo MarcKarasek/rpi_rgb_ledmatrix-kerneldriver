@@ -17,6 +17,10 @@
 #include "../webinterface/PracticalSocket.h"      // For UDPSocket and SocketException
 #endif
 
+#include "../kmod_common.h"
+#ifdef UDP_SCKT_INTERFACE
+#include "../web_defines.h"
+#endif
 #include "led-matrix.h"
 
 #include <assert.h>
@@ -114,12 +118,14 @@ RGBMatrix::~RGBMatrix() {
 
 #ifdef UDP_SCKT_INTERFACE
 // Web UDP Client Code
-void RGBMatrix::SetNetInterface(string host, unsigned short port ) {
+void RGBMatrix::SetNetInterface(string host, unsigned short port, struct net_parameters * params ) {
 
     // Set Server and Port to use for Web Interface
     host_.assign(host);
     port_ = port;
     cout<<"Server Address "<<host_<<" Port "<<port_<<endl;
+
+    frame_->SyncSrvr(host, port, params);
 
     updater_ = new UpdateThread(this);
     updater_->Start(99);  // Whatever we get :)
@@ -140,8 +146,6 @@ bool RGBMatrix::SetGPIO(void) {
 }
 #endif
 
-
-
 bool RGBMatrix::SetPWMBits(uint8_t value) { return frame_->SetPWMBits(value); }
 uint8_t RGBMatrix::pwmbits() { return frame_->pwmbits(); }
 
@@ -151,7 +155,10 @@ void RGBMatrix::set_luminance_correct(bool on) {
 }
 bool RGBMatrix::luminance_correct() const { return frame_->luminance_correct(); }
 #ifdef UDP_SCKT_INTERFACE
-void RGBMatrix::UpdateScreen() { frame_->DumpToMatrix(host_, port_); }
+void RGBMatrix::UpdateScreen() {
+//    frame_->DumpToMatrix(host_, port_);
+    frame_->DumpToWeb(host_, port_);
+}
 #else
 void RGBMatrix::UpdateScreen() { frame_->DumpToMatrix(fd_); }
 #endif

@@ -948,7 +948,7 @@ int main(int argc, char *argv[]) {
 
   // The matrix, our 'frame buffer' and display updater.
   RGBMatrix *matrix = new RGBMatrix(rows, chain);
-  // Do setup and check for true/false for set  ok or not
+  // Do setup and check for true/false for setup ok or not
   if( !matrix->SetGPIO() )
       return 1;
 

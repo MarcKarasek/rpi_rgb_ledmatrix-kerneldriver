@@ -21,6 +21,12 @@
 #include "../webinterface/PracticalSocket.h"      // For UDPSocket and SocketException
 #endif
 
+#include "../kmod_common.h"
+#ifdef UDP_SCKT_INTERFACE
+#include "../web_defines.h"
+struct net_canvas net_cnvs;
+#endif
+
 #include "framebuffer-internal.h"
 
 #include <assert.h>
@@ -33,12 +39,13 @@
 #include <sys/ioctl.h>
 #include <iostream>          // For cout and cerr
 
-#include "../kmod_common.h"
-
 namespace rgb_matrix {
 enum {
   kBitPlanes = 11  // maximum usable bitplanes.
 };
+
+struct set_bits set_bits_vals;
+int value;
 
 static const long kBaseTimeNanos = 200;
 
@@ -193,6 +200,37 @@ void RGBMatrix::Framebuffer::KillSrvr(string host, unsigned short port)
         nval.value = 0;
         sock.sendTo(&nval, sizeof(net_value), host, port);
 }
+  // Set the paramters for this Client Application with the Web Server
+  // These are used in the WebSrvr when dumping to the GPIO.
+bool RGBMatrix::Framebuffer::SyncSrvr(string host, unsigned short port, struct net_parameters * params)
+{
+      if (host.empty())
+      {
+          cout<<"Need to set the host:port"<<endl;
+          return false;
+      }
+      sock.sendTo(params, sizeof(net_parameters), host, port);
+      return true;
+}
+#endif
+
+#ifdef UDP_SCKT_INTERFACE
+void RGBMatrix::Framebuffer::DumpToWeb(string host, unsigned short port) {
+
+try {
+    // Establish connection with the led server
+    TCPSocket tcpsock(host, port);
+
+    // Send the current buffer to server
+    tcpsock.send(bitplane_buffer_, NET_BUFFER);
+
+    // Destructor closes the socket
+  } catch(SocketException &e) {
+    cerr << e.what() << endl;
+    cout << "TCP Send Error" << endl;
+  }
+
+}
 #endif
 
 #ifdef UDP_SCKT_INTERFACE
@@ -316,9 +354,9 @@ void RGBMatrix::Framebuffer::DumpToMatrix(int fd) {
       sock.sendTo(&nval, sizeof(net_value), host, port);
 #else
       ioctl(fd, LED_CLRBITS,&value);
+
 #endif
       sleep_nanos(kBaseTimeNanos << b);
-
       value = output_enable.raw;
 #ifdef UDP_SCKT_INTERFACE
       nval.netopcode = NET_SETBITS;
