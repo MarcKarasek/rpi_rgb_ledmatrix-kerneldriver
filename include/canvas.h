@@ -39,7 +39,7 @@ public:
   // Clear screen to be all black.
   virtual void Clear() = 0;
 
-#ifdef UDP_SCKT_INTERFACE
+#ifdef LED_SCKT_INTERFACE
   virtual void StopSrvr() = 0;
 #endif
 

@@ -37,7 +37,7 @@ public:
   RGBMatrix(int rows = 32, int chained_displays = 1);
   virtual ~RGBMatrix();
 
-#ifdef UDP_SCKT_INTERFACE
+#ifdef LED_SCKT_INTERFACE
   // Set the Server Address and Port for the Web interface
   // Only called when we are a network client
   // Starts display refresh thread
@@ -66,7 +66,7 @@ public:
   virtual void SetPixel(int x, int y,
                         uint8_t red, uint8_t green, uint8_t blue);
   virtual void Clear();
-#ifdef UDP_SCKT_INTERFACE
+#ifdef LED_SCKT_INTERFACE
   virtual void StopSrvr();
 #endif
   virtual void Fill(uint8_t red, uint8_t green, uint8_t blue);
@@ -80,7 +80,7 @@ private:
   // Updates the screen regularly.
   void UpdateScreen();
   Framebuffer *frame_;
-#ifdef UDP_SCKT_INTERFACE
+#ifdef LED_SCKT_INTERFACE
   std::string host_;
   unsigned short port_;
 #else

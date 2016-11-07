@@ -40,19 +40,15 @@ public:
   void set_luminance_correct(bool on) { do_luminance_correct_ = on; }
   bool luminance_correct() const { return do_luminance_correct_; }
 
-// Cmd to stop server from Client
-#ifdef UDP_SCKT_INTERFACE
+
+#ifdef LED_SCKT_INTERFACE
+    // Cmd to stop server from Client
     void KillSrvr(string host, unsigned short port);
+    // Send UDP PAcket to sync client with server for options
     bool SyncSrvr(string host, unsigned short port, struct net_parameters * params);
-#endif
 
-#ifdef UDP_SCKT_INTERFACE
-void DumpToWeb(string host, unsigned short port);
-#endif
-
-  // We are either Dumping the Matrix to a UDP Socket or GPIOs
-#ifdef UDP_SCKT_INTERFACE
-    void DumpToMatrix(string host, unsigned short port);
+    // We are either Dumping the Matrix to a TCP Socket or GPIOs
+    void DumpToWeb(string host, unsigned short port);
 #else
     void DumpToMatrix(int fd);
 #endif
@@ -67,7 +63,7 @@ void DumpToWeb(string host, unsigned short port);
 
 private:
 
-#ifdef UDP_SCKT_INTERFACE
+#ifdef LED_SCKT_INTERFACE
   UDPSocket sock;
 
   struct net_value nval;

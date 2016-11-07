@@ -17,14 +17,15 @@
 // format that is friendly to be dumped to the matrix quickly. Provides methods
 // to manipulate the content.
 
-#ifdef UDP_SCKT_INTERFACE
-#include "../webinterface/PracticalSocket.h"      // For UDPSocket and SocketException
+#ifdef LED_SCKT_INTERFACE
+    #include "../webinterface/PracticalSocket.h"      // For UDPSocket and SocketException
 #endif
 
 #include "../kmod_common.h"
-#ifdef UDP_SCKT_INTERFACE
-#include "../web_defines.h"
-struct net_canvas net_cnvs;
+
+#ifdef LED_SCKT_INTERFACE
+    #include "../web_defines.h"
+    struct net_canvas net_cnvs;
 #endif
 
 #include "framebuffer-internal.h"
@@ -193,7 +194,7 @@ void RGBMatrix::Framebuffer::SetPixel(int x, int y,
   }
 }
 
-#ifdef UDP_SCKT_INTERFACE
+#ifdef LED_SCKT_INTERFACE
 void RGBMatrix::Framebuffer::KillSrvr(string host, unsigned short port)
 {
         nval.netopcode = NET_KILLSRVR;
@@ -214,7 +215,7 @@ bool RGBMatrix::Framebuffer::SyncSrvr(string host, unsigned short port, struct n
 }
 #endif
 
-#ifdef UDP_SCKT_INTERFACE
+#ifdef LED_SCKT_INTERFACE
 void RGBMatrix::Framebuffer::DumpToWeb(string host, unsigned short port) {
 
 try {
@@ -231,13 +232,8 @@ try {
   }
 
 }
-#endif
-
-#ifdef UDP_SCKT_INTERFACE
-void RGBMatrix::Framebuffer::DumpToMatrix(string host, unsigned short port) {
 #else
 void RGBMatrix::Framebuffer::DumpToMatrix(int fd) {
-#endif
   IoBits color_clk_mask;   // Mask of bits we need to set while clocking in.
   color_clk_mask.bits.r1 = color_clk_mask.bits.g1 = color_clk_mask.bits.b1 = 1;
   color_clk_mask.bits.r2 = color_clk_mask.bits.g2 = color_clk_mask.bits.b2 = 1;
@@ -279,12 +275,8 @@ void RGBMatrix::Framebuffer::DumpToMatrix(int fd) {
     // Set row address
     set_bits_vals.mask = row_mask.raw;
     set_bits_vals.value = row_address.raw;
-#ifdef UDP_SCKT_INTERFACE
-    set_bits_vals.netopcode = NET_WRMSKBITS;
-    sock.sendTo(&set_bits_vals, sizeof(set_bits), host, port);
-#else
     ioctl(fd, LED_WRMSKBITS,&set_bits_vals);
-#endif
+
     // Rows can't be switched very quickly without ghosting, so we do the
     // full PWM of one row before switching rows.
     for (int b = kBitPlanes - pwm_to_show; b < kBitPlanes; ++b) {
@@ -298,75 +290,32 @@ void RGBMatrix::Framebuffer::DumpToMatrix(int fd) {
         // col + reset clock
         set_bits_vals.mask = color_clk_mask.raw;
         set_bits_vals.value = out.raw;
-#ifdef UDP_SCKT_INTERFACE
-        set_bits_vals.netopcode = NET_WRMSKBITS;
-        sock.sendTo(&set_bits_vals, sizeof(set_bits), host, port);
-#else
         ioctl(fd, LED_WRMSKBITS,&set_bits_vals);
-#endif
+
         // Rising edge: clock color in.
         value = clock.raw;
-#ifdef UDP_SCKT_INTERFACE
-        nval.netopcode = NET_SETBITS;
-        nval.value = value;
-//        cout<<"Set "<<nval.value<<endl;
-        sock.sendTo(&nval, sizeof(net_value), host, port);
-#else
         ioctl(fd, LED_SETBITS,&value);
-#endif
       }
       // clock back to normal.
       value = color_clk_mask.raw;
-#ifdef UDP_SCKT_INTERFACE
-      nval.netopcode = NET_CLRBITS;
-      nval.value = value;
-//      cout<<"CLR "<<nval.value<<endl;
-      sock.sendTo(&nval, sizeof(net_value), host, port);
-#else
       ioctl(fd, LED_CLRBITS,&value);
-#endif
+
       // Strobe in the previously clocked in row.
       value = strobe.raw;
-#ifdef UDP_SCKT_INTERFACE
-      nval.netopcode = NET_SETBITS;
-      nval.value = value;
-//      cout<<"SET "<<nval.value<<endl;
-      sock.sendTo(&nval, sizeof(net_value), host, port);
-#else
       ioctl(fd, LED_SETBITS,&value);
-#endif
+
       value = strobe.raw;
-#ifdef UDP_SCKT_INTERFACE
-      nval.netopcode = NET_CLRBITS;
-      nval.value = value;
-//      cout<<"CLR "<<nval.value<<endl;
-      sock.sendTo(&nval, sizeof(net_value), host, port);
-#else
       ioctl(fd, LED_CLRBITS,&value);
-#endif
 
       // Now switch on for the sleep time necessary for that bit-plane.
       value = output_enable.raw;
-#ifdef UDP_SCKT_INTERFACE
-      nval.netopcode = NET_CLRBITS;
-      nval.value = value;
-//      cout<<"CLR "<<nval.value<<endl;
-      sock.sendTo(&nval, sizeof(net_value), host, port);
-#else
       ioctl(fd, LED_CLRBITS,&value);
 
-#endif
       sleep_nanos(kBaseTimeNanos << b);
       value = output_enable.raw;
-#ifdef UDP_SCKT_INTERFACE
-      nval.netopcode = NET_SETBITS;
-      nval.value = value;
-//      cout<<"SET "<<nval.value<<endl;
-      sock.sendTo(&nval, sizeof(net_value), host, port);
-#else
       ioctl(fd, LED_SETBITS,&value);
-#endif
     }
   }
 }
+#endif // #ifdef LED_SCKT_INTERFACE
 }  // namespace rgb_matrix

@@ -13,12 +13,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://gnu.org/licenses/gpl-2.0.txt>
 
-#ifdef UDP_SCKT_INTERFACE
+#ifdef LED_SCKT_INTERFACE
 #include "../webinterface/PracticalSocket.h"      // For UDPSocket and SocketException
 #endif
 
 #include "../kmod_common.h"
-#ifdef UDP_SCKT_INTERFACE
+#ifdef LED_SCKT_INTERFACE
 #include "../web_defines.h"
 #endif
 #include "led-matrix.h"
@@ -46,7 +46,7 @@
 #include "framebuffer-internal.h"
 
 
-#ifndef UDP_SCKT_INTERFACE
+#ifndef LED_SCKT_INTERFACE
 #define DEVICE_PATH "/dev/gpioleddrvr"
 #endif
 
@@ -88,7 +88,7 @@ private:
   bool running_;
   RGBMatrix *const matrix_;
 };
-#ifdef UDP_SCKT_INTERFACE
+#ifdef LED_SCKT_INTERFACE
 RGBMatrix::RGBMatrix(int rows, int chained_displays)
   : frame_(new Framebuffer(rows, 32 * chained_displays)),
     updater_(NULL) {
@@ -105,19 +105,19 @@ RGBMatrix::~RGBMatrix() {
   delete updater_;
 
   frame_->Clear();
-#ifdef UDP_SCKT_INTERFACE
- frame_->DumpToMatrix(host_, port_);
+#ifdef LED_SCKT_INTERFACE
+ frame_->DumpToWeb(host_, port_);
 #else
   frame_->DumpToMatrix(fd_);
 #endif
   delete frame_;
-#ifndef UDP_SCKT_INTERFACE
+#ifndef LED_SCKT_INTERFACE
   close(fd_);
 #endif
 }
 
-#ifdef UDP_SCKT_INTERFACE
-// Web UDP Client Code
+#ifdef LED_SCKT_INTERFACE
+// Web Led Client Code
 void RGBMatrix::SetNetInterface(string host, unsigned short port, struct net_parameters * params ) {
 
     // Set Server and Port to use for Web Interface
@@ -154,9 +154,8 @@ void RGBMatrix::set_luminance_correct(bool on) {
   frame_->set_luminance_correct(on);
 }
 bool RGBMatrix::luminance_correct() const { return frame_->luminance_correct(); }
-#ifdef UDP_SCKT_INTERFACE
+#ifdef LED_SCKT_INTERFACE
 void RGBMatrix::UpdateScreen() {
-//    frame_->DumpToMatrix(host_, port_);
     frame_->DumpToWeb(host_, port_);
 }
 #else
@@ -171,7 +170,7 @@ void RGBMatrix::SetPixel(int x, int y,
   frame_->SetPixel(x, y, red, green, blue);
 }
 void RGBMatrix::Clear() { return frame_->Clear(); }
-#ifdef UDP_SCKT_INTERFACE
+#ifdef LED_SCKT_INTERFACE
 void RGBMatrix::StopSrvr() { return frame_->KillSrvr(host_, port_); }
 #endif
 void RGBMatrix::Fill(uint8_t red, uint8_t green, uint8_t blue) {
