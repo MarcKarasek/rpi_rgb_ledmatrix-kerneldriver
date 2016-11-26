@@ -1,0 +1,27 @@
+Steps to compile and run the webserver/webclient led driver
+
+Steps:
+
+1.  Follow the Readme.txt file and build the kernel driver.
+2.  Compile the Server / Client
+        make -f Makefile.webapp
+
+After this is done you will have the following files:
+
+ledwebsrvr  -- Web Server
+
+web-matrix  -- Web Client
+
+Open two ssh windows
+
+In window 1 run the server:
+sudo ./lebwebsrvr 300
+
+This will open the server on port 300
+
+In window 2 run the client:
+./web-matrix -s127.0.0.1:300
+
+This will start the client on the localhost and port 300.
+
+
