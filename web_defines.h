@@ -11,6 +11,7 @@
 #define NET_KILLSRVR    0x13
 #define NET_INIT_PARAMS 0x14
 #define NET_SENDCANVAS  0x15
+#define NET_CLIENT_DC   0x16
 
 #define NET_BUFFER  22528
 #define NET_BUFFER_LARGE 360448

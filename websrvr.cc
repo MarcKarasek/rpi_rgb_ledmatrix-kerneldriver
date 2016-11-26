@@ -40,6 +40,7 @@ pthread_t rcv_canvas_thread;
 pthread_t canvas_thread;
 pthread_mutex_t web_srvr;
 bool shutdownsrvr = false;
+volatile int thread_exit = 0;
 int ret;
 
 unsigned short LedSrvrPort;
@@ -171,25 +172,15 @@ void HandleTCPClient(TCPSocket *tcpsock) {
 //  cout << "Receiving Buffer "<<endl;
   int recvMsgSize;
 
-#if 0
-  cout << "Handling client ";
-  try {
-    cout << tcpsock->getForeignAddress() << ":";
-  } catch (SocketException e) {
-    cerr << "Unable to get foreign address" << endl;
+  // If we have signaled a DC/shutdown do not try to rcv anything as the buffer is gone
+  // Just delete the tcpsocket and return
+  if(shutdownsrvr)
+  {
+      delete tcpsock;
+      return;
   }
-  try {
-    cout << tcpsock->getForeignPort();
-  } catch (SocketException e) {
-    cerr << "Unable to get foreign port" << endl;
-  }
-  cout << endl;
-#endif
-  while ((recvMsgSize = tcpsock->recv(net_bitplane_buffer_ptr, NET_BUFFER)) > 0) { // Zero means end of transmission
 
-//      cout<<"Rcvd Buffer Size = "<<recvMsgSize<<endl;
-
-      }
+  while ((recvMsgSize = tcpsock->recv(net_bitplane_buffer_ptr, NET_BUFFER)) > 0) {} // Zero means end of transmission
 
   delete tcpsock;
 }
@@ -197,19 +188,24 @@ void HandleTCPClient(TCPSocket *tcpsock) {
 // Thread to receive packets via TCP from Client
 void *rcv_cnvs_thread(void * arg)
 {
+    cout<<"rcv_cnvs_thread enter"<<endl;
     try {
         TCPServerSocket servSock(LedSrvrPort);     // Server Socket object
         for (;;) {   // Run forever
              HandleTCPClient(servSock.accept());       // Wait for a client to connect
-             pthread_mutex_lock(&web_srvr);
              if(shutdownsrvr)
+             {
+                 pthread_mutex_lock(&web_srvr);
+                 thread_exit++;
+                 pthread_mutex_unlock(&web_srvr);
                  break;
-             pthread_mutex_unlock(&web_srvr);
+             }
         }
     } catch (SocketException &e) {
         cerr << e.what() << endl;
         exit(1);
     }
+    cout<<"rcv_cnvs_thread exit"<<endl;
     pthread_exit(NULL);
 }
 
@@ -220,11 +216,14 @@ void *cnvs_thread(void * arg)
     cout<<"cnvs_thread enter"<<endl;
     for(;;)
     {
-        DumpToMatrix(fd);
-        pthread_mutex_lock(&web_srvr);
         if(shutdownsrvr)
+        {
+            pthread_mutex_lock(&web_srvr);
+            thread_exit++;
+            pthread_mutex_unlock(&web_srvr);
             break;
-        pthread_mutex_unlock(&web_srvr);
+        }
+        DumpToMatrix(fd);
     }
     cout<<"cnvs_thread exit"<<endl;
     pthread_exit(NULL);
@@ -304,6 +303,9 @@ int main(int argc, char *argv[]) {
 
   SetGPIO();
 
+  /* initialize pthread mutex protecting "shutdown flag" */
+  pthread_mutex_init(&web_srvr, NULL);
+
   try {
     UDPSocket sock(LedSrvrPort);
 
@@ -347,12 +349,31 @@ int main(int argc, char *argv[]) {
           // cout<<*pval<<endl;
           ioctl(fd, LED_CLRBITS,pval);
           break;
-      case NET_KILLSRVR :
-          cout<<"Stopping Server -- Rcvd Stop CMd from Client"<<endl;
+      case NET_CLIENT_DC :
+          cout<<"DC Server -- Rcvd DC Cmd from Client"<<endl;
           Clear();
           pthread_mutex_lock(&web_srvr);
             shutdownsrvr = true;
           pthread_mutex_unlock(&web_srvr);
+          // Wait for the threads to exit
+          cout<<"Wait on threads"<<endl;
+          while(thread_exit != 2) {}
+          cout<<"All threads exited"<<endl;
+          // Reset thread_exit and shutdownsrvr variables
+          pthread_mutex_lock(&web_srvr);
+            shutdownsrvr = false;
+            thread_exit = 0;
+          pthread_mutex_unlock(&web_srvr);
+          delete [] net_bitplane_buffer_ptr;
+          break;
+      case NET_KILLSRVR :
+          cout<<"Stopping Server -- Rcvd Stop Cmd from Client"<<endl;
+          Clear();
+          pthread_mutex_lock(&web_srvr);
+            shutdownsrvr = true;
+          pthread_mutex_unlock(&web_srvr);
+          // Wait for the threads to exit
+          while(thread_exit != 2) {}
           delete [] net_bitplane_buffer_ptr;
           close(fd);
           exit(0);
@@ -378,6 +399,7 @@ int main(int argc, char *argv[]) {
                client_params.pwm_bits = kBitPlanes;
            }
 
+           cout<<"dbg1"<<endl;
 
           // The frame-buffer is organized in bitplanes.
           // Highest level (slowest to cycle through) are double rows.
@@ -390,12 +412,12 @@ int main(int argc, char *argv[]) {
           //  there will be 4 packets per canvas.
           net_bitplane_buffer_ptr = new IoBits [double_rows * columns * kBitPlanes];
 
+          cout<<"dbg2"<<endl;
+
           // Clear out the buffer
           Clear();
 
-          /* initialize pthread mutex protecting "shared_x" */
-          pthread_mutex_init(&web_srvr, NULL);
-          cout<<"Create Thread for Canvas->GPIO\n"<<endl;
+          cout<<"Create Threads for Canvas->GPIO\n"<<endl;
           ret = pthread_create( &canvas_thread, NULL, cnvs_thread, NULL);
           if(ret)
           {

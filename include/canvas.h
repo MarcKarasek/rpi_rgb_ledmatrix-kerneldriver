@@ -41,6 +41,7 @@ public:
 
 #ifdef LED_SCKT_INTERFACE
   virtual void StopSrvr() = 0;
+  virtual void DisConnSrvr() = 0;
 #endif
 
   // Fill screen with given 24bpp color.

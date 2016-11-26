@@ -52,6 +52,7 @@ static const long kBaseTimeNanos = 200;
 
 volatile uint32_t *freeRunTimer = NULL; // GPIO may override on startup
 
+#ifndef LED_SCKT_INTERFACE
 static void sleep_nanos(long nanos) {
   if (nanos > 28000) {
     if(freeRunTimer) { // Pi 2?
@@ -75,6 +76,7 @@ static void sleep_nanos(long nanos) {
     for(volatile int i = nanos >> 3; i--; );
   }
 }
+#endif
 
 RGBMatrix::Framebuffer::Framebuffer(int rows, int columns)
   : rows_(rows), columns_(columns),
@@ -195,9 +197,17 @@ void RGBMatrix::Framebuffer::SetPixel(int x, int y,
 }
 
 #ifdef LED_SCKT_INTERFACE
+// Disconnect from the server and tell server to stop
 void RGBMatrix::Framebuffer::KillSrvr(string host, unsigned short port)
 {
         nval.netopcode = NET_KILLSRVR;
+        nval.value = 0;
+        sock.sendTo(&nval, sizeof(net_value), host, port);
+}
+// Disconnect from server but leave it running for next client
+void RGBMatrix::Framebuffer::DCSrvr(string host, unsigned short port)
+{
+        nval.netopcode = NET_CLIENT_DC;
         nval.value = 0;
         sock.sendTo(&nval, sizeof(net_value), host, port);
 }

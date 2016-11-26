@@ -106,7 +106,8 @@ RGBMatrix::~RGBMatrix() {
 
   frame_->Clear();
 #ifdef LED_SCKT_INTERFACE
- frame_->DumpToWeb(host_, port_);
+// No need to clear the display.. if we are exiting we have cleared it before this, if needed
+// frame_->DumpToWeb(host_, port_);
 #else
   frame_->DumpToMatrix(fd_);
 #endif
@@ -172,6 +173,7 @@ void RGBMatrix::SetPixel(int x, int y,
 void RGBMatrix::Clear() { return frame_->Clear(); }
 #ifdef LED_SCKT_INTERFACE
 void RGBMatrix::StopSrvr() { return frame_->KillSrvr(host_, port_); }
+void RGBMatrix::DisConnSrvr() { return frame_->DCSrvr(host_, port_); }
 #endif
 void RGBMatrix::Fill(uint8_t red, uint8_t green, uint8_t blue) {
   frame_->Fill(red, green, blue);

@@ -46,7 +46,8 @@ public:
     void KillSrvr(string host, unsigned short port);
     // Send UDP PAcket to sync client with server for options
     bool SyncSrvr(string host, unsigned short port, struct net_parameters * params);
-
+    // Disconnect from server but leave it running for next client
+    void DCSrvr(string host, unsigned short port);
     // We are either Dumping the Matrix to a TCP Socket or GPIOs
     void DumpToWeb(string host, unsigned short port);
 #else
