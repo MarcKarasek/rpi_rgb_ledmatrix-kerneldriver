@@ -69,6 +69,7 @@ public:
 #ifdef LED_SCKT_INTERFACE
   virtual void StopSrvr();
   virtual void DisConnSrvr();
+  virtual void SendCnvs();
 #endif
   virtual void Fill(uint8_t red, uint8_t green, uint8_t blue);
 

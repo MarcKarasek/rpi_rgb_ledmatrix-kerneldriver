@@ -141,8 +141,12 @@ bool RGBMatrix::SetGPIO(void) {
       printf("Error Opening Led Driver /dev/gpioleddrvr %x ", errno);
       return false;  //Problem with Driver just return.
   }
+#ifndef LED_SCKT_INTERFACE
+  // For Web Interface we do the canvas update in each demo thread.
+  // We send the canvas to the server at the end of each loop of the demo.
   updater_ = new UpdateThread(this);
   updater_->Start(99);  // Whatever we get :)
+#endif
   return true;
 }
 #endif
@@ -174,6 +178,7 @@ void RGBMatrix::Clear() { return frame_->Clear(); }
 #ifdef LED_SCKT_INTERFACE
 void RGBMatrix::StopSrvr() { return frame_->KillSrvr(host_, port_); }
 void RGBMatrix::DisConnSrvr() { return frame_->DCSrvr(host_, port_); }
+void RGBMatrix::SendCnvs() { return frame_->DumpToWeb(host_, port_); }
 #endif
 void RGBMatrix::Fill(uint8_t red, uint8_t green, uint8_t blue) {
   frame_->Fill(red, green, blue);

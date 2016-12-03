@@ -51,6 +51,7 @@ public:
   virtual void Clear() { delegatee_->Clear(); }
   virtual void StopSrvr() { delegatee_->StopSrvr(); }
   virtual void DisConnSrvr() { delegatee_->DisConnSrvr(); }
+  virtual void SendCnvs() { delegatee_->SendCnvs(); }
   virtual void Fill(uint8_t red, uint8_t green, uint8_t blue) {
     delegatee_->Fill(red, green, blue);
   }
@@ -101,6 +102,10 @@ public:
         b = c;
       }
       canvas()->Fill(r, g, b);
+
+      // update Screen here as a test
+      canvas()->SendCnvs();
+
     }
   }
 };
@@ -124,6 +129,10 @@ public:
       canvas()->SetPixel(0, y, 0, 0, 255);              // left line: blue
       canvas()->SetPixel(width - 1, y, 0, 255, 0);      // right line: green
     }
+
+    // update Screen here as a test
+    canvas()->SendCnvs();
+
   }
 };
 
@@ -151,6 +160,10 @@ public:
       }
       count++;
       sleep(2);
+
+      // update Screen here as a test
+      canvas()->SendCnvs();
+
     }
   }
 };
@@ -205,6 +218,10 @@ public:
           }
         }
       }
+
+      // update Screen here as a test
+      canvas()->SendCnvs();
+
     }
   }
 
@@ -303,6 +320,10 @@ public:
       } else {
         usleep(scroll_ms_ * 1000);
       }
+
+      // update Screen here as a test
+      canvas()->SendCnvs();
+
     }
   }
 
@@ -420,6 +441,10 @@ public:
         }
       }
       usleep(delay_ms_ * 1000); // ms
+
+      // update Screen here as a test
+      canvas()->SendCnvs();
+
     }
   }
 
@@ -536,6 +561,10 @@ public:
         }
       }
       usleep(delay_ms_ * 1000); // ms
+
+      // update Screen here as a test
+      canvas()->SendCnvs();
+
     }
   }
 
@@ -687,6 +716,10 @@ public:
         return;
       updatePixel(antX_, antY_);
       usleep(delay_ms_ * 1000);
+
+      // update Screen here as a test
+      canvas()->SendCnvs();
+
     }
   }
 
@@ -807,6 +840,10 @@ public:
         }
       }
       usleep(delay_ms_ * 1000);
+
+      // update Screen here as a test
+      canvas()->SendCnvs();
+
     }
   }
 
@@ -1262,7 +1299,7 @@ int main(int argc, char *argv[]) {
           }
           if (image_gen != NULL)
           {
-                image_gen->Start();
+                image_gen->Start(99);
                 // Things are set up. Just wait for <RETURN> to be pressed.
                 printf("Press <RETURN> to exit and reset LEDs\n");
                 getchar();
