@@ -12,6 +12,12 @@ Demo Application -
     Setup to use /dev/gpioleddriver ioctl calls to access Raspberry PI GPIOs and write to Led Display.
     No sudo needed to run this.
 
+Web Server / Client Added.
+Web Server runs on rasp PI along with Kernel Module.
+Client can run locally (localhost 127.0.0.1) or on another Linux / Pi
+
+Tested with localhost and display is present but not crisp.
+Remote client dispaly is partially there but garbled.
 
 Compiled and testesd with the following configuration:
 
