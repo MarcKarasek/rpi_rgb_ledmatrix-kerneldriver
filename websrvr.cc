@@ -38,9 +38,6 @@ int columns;
 static const long kBaseTimeNanos = 200;
 pthread_t rcv_canvas_thread;
 pthread_t canvas_thread;
-pthread_mutex_t web_srvr;
-bool shutdownsrvr = false;
-volatile int thread_exit = 0;
 int ret;
 
 unsigned short LedSrvrPort;
@@ -172,14 +169,6 @@ void HandleTCPClient(TCPSocket *tcpsock) {
 //  cout << "Receiving Buffer "<<endl;
   int recvMsgSize;
 
-  // If we have signaled a DC/shutdown do not try to rcv anything as the buffer is gone
-  // Just delete the tcpsocket and return
-  if(shutdownsrvr)
-  {
-      delete tcpsock;
-      return;
-  }
-
   while ((recvMsgSize = tcpsock->recv(net_bitplane_buffer_ptr, NET_BUFFER)) > 0) {} // Zero means end of transmission
 
   delete tcpsock;
@@ -193,13 +182,6 @@ void *rcv_cnvs_thread(void * arg)
         TCPServerSocket servSock(LedSrvrPort);     // Server Socket object
         for (;;) {   // Run forever
              HandleTCPClient(servSock.accept());       // Wait for a client to connect
-             if(shutdownsrvr)
-             {
-                 pthread_mutex_lock(&web_srvr);
-                 thread_exit++;
-                 pthread_mutex_unlock(&web_srvr);
-                 break;
-             }
         }
     } catch (SocketException &e) {
         cerr << e.what() << endl;
@@ -216,13 +198,6 @@ void *cnvs_thread(void * arg)
     cout<<"cnvs_thread enter"<<endl;
     for(;;)
     {
-        if(shutdownsrvr)
-        {
-            pthread_mutex_lock(&web_srvr);
-            thread_exit++;
-            pthread_mutex_unlock(&web_srvr);
-            break;
-        }
         DumpToMatrix(fd);
     }
     cout<<"cnvs_thread exit"<<endl;
@@ -303,9 +278,6 @@ int main(int argc, char *argv[]) {
 
   SetGPIO();
 
-  /* initialize pthread mutex protecting "shutdown flag" */
-  pthread_mutex_init(&web_srvr, NULL);
-
   try {
     UDPSocket sock(LedSrvrPort);
 
@@ -352,28 +324,26 @@ int main(int argc, char *argv[]) {
       case NET_CLIENT_DC :
           cout<<"DC Server -- Rcvd DC Cmd from Client"<<endl;
           Clear();
-          pthread_mutex_lock(&web_srvr);
-            shutdownsrvr = true;
-          pthread_mutex_unlock(&web_srvr);
           // Wait for the threads to exit
           cout<<"Wait on threads"<<endl;
-          while(thread_exit != 2) {}
+          pthread_cancel(canvas_thread);
+          pthread_cancel(rcv_canvas_thread);
+          pthread_join(canvas_thread, NULL);
+          pthread_join(rcv_canvas_thread, NULL);
           cout<<"All threads exited"<<endl;
           // Reset thread_exit and shutdownsrvr variables
-          pthread_mutex_lock(&web_srvr);
-            shutdownsrvr = false;
-            thread_exit = 0;
-          pthread_mutex_unlock(&web_srvr);
           delete [] net_bitplane_buffer_ptr;
           break;
       case NET_KILLSRVR :
           cout<<"Stopping Server -- Rcvd Stop Cmd from Client"<<endl;
           Clear();
-          pthread_mutex_lock(&web_srvr);
-            shutdownsrvr = true;
-          pthread_mutex_unlock(&web_srvr);
           // Wait for the threads to exit
-          while(thread_exit != 2) {}
+          cout<<"Wait on threads"<<endl;
+          pthread_cancel(canvas_thread);
+          pthread_cancel(rcv_canvas_thread);
+          pthread_join(canvas_thread, NULL);
+          pthread_join(rcv_canvas_thread, NULL);
+          cout<<"All threads exited"<<endl;
           delete [] net_bitplane_buffer_ptr;
           close(fd);
           exit(0);
@@ -398,9 +368,6 @@ int main(int argc, char *argv[]) {
            {
                client_params.pwm_bits = kBitPlanes;
            }
-
-           cout<<"dbg1"<<endl;
-
           // The frame-buffer is organized in bitplanes.
           // Highest level (slowest to cycle through) are double rows.
           // For each double-row, we store pwm-bits columns of a bitplane.
@@ -411,8 +378,6 @@ int main(int argc, char *argv[]) {
           //  For 1 Led Display there is one UDP (65K max) packet per canvas.  For large display
           //  there will be 4 packets per canvas.
           net_bitplane_buffer_ptr = new IoBits [double_rows * columns * kBitPlanes];
-
-          cout<<"dbg2"<<endl;
 
           // Clear out the buffer
           Clear();

@@ -1308,8 +1308,9 @@ int main(int argc, char *argv[]) {
                 canvas->Clear();
           }
       }
+      cout<<"Exiting program"<<endl;
   }
 
   delete canvas;
-  return 0;
+  exit(0);
 }

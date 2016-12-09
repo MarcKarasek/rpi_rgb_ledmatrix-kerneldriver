@@ -100,14 +100,16 @@ RGBMatrix::RGBMatrix(int rows, int chained_displays)
 }
 #endif
 RGBMatrix::~RGBMatrix() {
+
+#ifndef LED_SCKT_INTERFACE
   updater_->Stop();
   updater_->WaitStopped();
   delete updater_;
+#endif
 
   frame_->Clear();
 #ifdef LED_SCKT_INTERFACE
 // No need to clear the display.. if we are exiting we have cleared it before this, if needed
-// frame_->DumpToWeb(host_, port_);
 #else
   frame_->DumpToMatrix(fd_);
 #endif
@@ -128,8 +130,8 @@ void RGBMatrix::SetNetInterface(string host, unsigned short port, struct net_par
 
     frame_->SyncSrvr(host, port, params);
 
-    updater_ = new UpdateThread(this);
-    updater_->Start(99);  // Whatever we get :)
+    // For Web Interface we do the canvas update in each demo thread.
+    // We send the canvas to the server at the end of each loop of the demo.
 }
 // GPIO code
 #else
@@ -141,12 +143,8 @@ bool RGBMatrix::SetGPIO(void) {
       printf("Error Opening Led Driver /dev/gpioleddrvr %x ", errno);
       return false;  //Problem with Driver just return.
   }
-#ifndef LED_SCKT_INTERFACE
-  // For Web Interface we do the canvas update in each demo thread.
-  // We send the canvas to the server at the end of each loop of the demo.
   updater_ = new UpdateThread(this);
   updater_->Start(99);  // Whatever we get :)
-#endif
   return true;
 }
 #endif
