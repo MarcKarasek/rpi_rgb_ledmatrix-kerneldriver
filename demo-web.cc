@@ -103,9 +103,9 @@ public:
       }
       canvas()->Fill(r, g, b);
 
-      // update Screen here as a test
+#ifdef DEMO_CNVS_SND
       canvas()->SendCnvs();
-
+#endif
     }
   }
 };
@@ -129,10 +129,9 @@ public:
       canvas()->SetPixel(0, y, 0, 0, 255);              // left line: blue
       canvas()->SetPixel(width - 1, y, 0, 255, 0);      // right line: green
     }
-
-    // update Screen here as a test
+#ifdef DEMO_CNVS_SND
     canvas()->SendCnvs();
-
+#endif
   }
 };
 
@@ -160,10 +159,9 @@ public:
       }
       count++;
       sleep(2);
-
-      // update Screen here as a test
+#ifdef DEMO_CNVS_SND
       canvas()->SendCnvs();
-
+#endif
     }
   }
 };
@@ -199,7 +197,7 @@ public:
     int rotation = 0;
     while (running()) {
       ++rotation;
-      usleep(15 * 1000);
+      usleep(15* 1000);
       rotation %= 360;
       for (int x = min_rotate; x < max_rotate; ++x) {
         for (int y = min_rotate; y < max_rotate; ++y) {
@@ -218,10 +216,9 @@ public:
           }
         }
       }
-
-      // update Screen here as a test
+#ifdef DEMO_CNVS_SND
       canvas()->SendCnvs();
-
+#endif
     }
   }
 
@@ -317,13 +314,14 @@ public:
       if (scroll_ms_ <= 0) {
         // No scrolling. We don't need the image anymore.
         current_image_.Delete();
-      } else {
+      }
+      else
+      {
         usleep(scroll_ms_ * 1000);
       }
-
-      // update Screen here as a test
+#ifdef DEMO_CNVS_SND
       canvas()->SendCnvs();
-
+#endif
     }
   }
 
@@ -441,10 +439,9 @@ public:
         }
       }
       usleep(delay_ms_ * 1000); // ms
-
-      // update Screen here as a test
+#ifdef DEMO_CNVS_SND
       canvas()->SendCnvs();
-
+#endif
     }
   }
 
@@ -561,10 +558,9 @@ public:
         }
       }
       usleep(delay_ms_ * 1000); // ms
-
-      // update Screen here as a test
+#ifdef DEMO_CNVS_SND
       canvas()->SendCnvs();
-
+#endif
     }
   }
 
@@ -716,10 +712,9 @@ public:
         return;
       updatePixel(antX_, antY_);
       usleep(delay_ms_ * 1000);
-
-      // update Screen here as a test
+#ifdef DEMO_CNVS_SND
       canvas()->SendCnvs();
-
+#endif
     }
   }
 
@@ -840,10 +835,9 @@ public:
         }
       }
       usleep(delay_ms_ * 1000);
-
-      // update Screen here as a test
+#ifdef DEMO_CNVS_SND
       canvas()->SendCnvs();
-
+#endif
     }
   }
 
@@ -1282,6 +1276,7 @@ int main(int argc, char *argv[]) {
               exit_pgm = true;
               // make sure the dispaly is cleared
               canvas->Clear();
+              canvas->SendCnvs();
               sleep(2);
               canvas->StopSrvr();
               break;
@@ -1289,6 +1284,7 @@ int main(int argc, char *argv[]) {
               cout<<"Exiting Client Server is still running"<<endl;
               // make sure the dispaly is cleared
               canvas->Clear();
+              canvas->SendCnvs();
               sleep(2);
               canvas->DisConnSrvr();
               exit_pgm = true;
@@ -1306,6 +1302,8 @@ int main(int argc, char *argv[]) {
                 // Stop image generating thread.
                 delete image_gen;
                 canvas->Clear();
+                // Becasue we no longer have the thread to send the canvas to the server we must do it manually
+                canvas->SendCnvs();
           }
       }
       cout<<"Exiting program"<<endl;

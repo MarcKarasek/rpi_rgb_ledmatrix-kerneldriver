@@ -29,6 +29,9 @@ const int CMDMAX = 525;     // Biggest Buffer should be 500.. pad it a little
 
 struct net_parameters client_params;
 union IoBits *net_bitplane_buffer_ptr;
+#ifdef RCV_BUFFER
+union IoBits *net_bitplane_rcv_buffer_ptr;
+#endif
 struct set_bits *pset_bits_vals;
 int *pval;
 
@@ -166,10 +169,15 @@ void DumpToMatrix(int fd)
 
 // TCP client handling function
 void HandleTCPClient(TCPSocket *tcpsock) {
-//  cout << "Receiving Buffer "<<endl;
   int recvMsgSize;
 
+#ifdef RCV_BUFFER
+  while ((recvMsgSize = tcpsock->recv(net_bitplane_rcv_buffer_ptr, NET_BUFFER)) > 0) {} // Zero means end of transmission
+#else
   while ((recvMsgSize = tcpsock->recv(net_bitplane_buffer_ptr, NET_BUFFER)) > 0) {} // Zero means end of transmission
+#endif
+  if(recvMsgSize != 0)
+      cout<<"Buffer Rcv Error"<<endl;
 
   delete tcpsock;
 }
@@ -182,12 +190,16 @@ void *rcv_cnvs_thread(void * arg)
         TCPServerSocket servSock(LedSrvrPort);     // Server Socket object
         for (;;) {   // Run forever
              HandleTCPClient(servSock.accept());       // Wait for a client to connect
+#ifdef RCV_BUFFER
+             // Copy the rcved buffer to the real one.
+             memcpy(net_bitplane_buffer_ptr, net_bitplane_rcv_buffer_ptr, NET_BUFFER);
+             memset(net_bitplane_rcv_buffer_ptr, 0x00, NET_BUFFER);
+#endif
         }
     } catch (SocketException &e) {
         cerr << e.what() << endl;
         exit(1);
     }
-    cout<<"rcv_cnvs_thread exit"<<endl;
     pthread_exit(NULL);
 }
 
@@ -199,17 +211,13 @@ void *cnvs_thread(void * arg)
     for(;;)
     {
         DumpToMatrix(fd);
+//        usleep(100* 1000);
     }
-    cout<<"cnvs_thread exit"<<endl;
     pthread_exit(NULL);
 }
 
-//*************************************************************************
-// Everything from here down to the module init() function is for the imalive
-// function.  This is not needed for the functioning of the driver.
-
 // We use a hardcoded cie[] table.  This is generated
-// form the cie1931.py python scipt.  Baseo on the values used in the original demo.
+// from the cie1931.py python scipt.  Baseo on the values used in the original demo.
 uint16_t MapColor(uint8_t c)
 {
 #ifdef INVERSE_RGB_DISPLAY_COLORS
@@ -333,6 +341,9 @@ int main(int argc, char *argv[]) {
           cout<<"All threads exited"<<endl;
           // Reset thread_exit and shutdownsrvr variables
           delete [] net_bitplane_buffer_ptr;
+#ifdef RCV_BUFFER
+          delete [] net_bitplane_rcv_buffer_ptr;
+#endif
           break;
       case NET_KILLSRVR :
           cout<<"Stopping Server -- Rcvd Stop Cmd from Client"<<endl;
@@ -345,6 +356,9 @@ int main(int argc, char *argv[]) {
           pthread_join(rcv_canvas_thread, NULL);
           cout<<"All threads exited"<<endl;
           delete [] net_bitplane_buffer_ptr;
+#ifdef RCV_BUFFER
+          delete [] net_bitplane_rcv_buffer_ptr;
+#endif
           close(fd);
           exit(0);
           break;
@@ -368,17 +382,18 @@ int main(int argc, char *argv[]) {
            {
                client_params.pwm_bits = kBitPlanes;
            }
+          cout<<"pwm_bits = "<<client_params.pwm_bits<<endl;
           // The frame-buffer is organized in bitplanes.
           // Highest level (slowest to cycle through) are double rows.
           // For each double-row, we store pwm-bits columns of a bitplane.
           // Each bitplane-column is pre-filled IoBits, of which the colors are set.
           // Of course, that means that we store unrelated bits in the frame-buffer,
           // but it allows easy access in the critical section.
-          //  NOTE:  This is the buffer that is copied into from the packets received via UDP
-          //  For 1 Led Display there is one UDP (65K max) packet per canvas.  For large display
-          //  there will be 4 packets per canvas.
+          //  NOTE:  This is the buffer that is copied into from the packets received via TCP
           net_bitplane_buffer_ptr = new IoBits [double_rows * columns * kBitPlanes];
-
+#ifdef RCV_BUFFER
+          net_bitplane_rcv_buffer_ptr = new IoBits [double_rows * columns * kBitPlanes];
+#endif
           // Clear out the buffer
           Clear();
 
@@ -389,6 +404,12 @@ int main(int argc, char *argv[]) {
               cout<<"pthread_create error cnvs_thread"<<ret<<endl;
               return -1;
           }
+          // set priority for Canvas Thread to 99 (Max priority)
+          {
+              struct sched_param p;
+              p.sched_priority = 99;
+              pthread_setschedparam(canvas_thread, SCHED_FIFO, &p);
+          }
 
           ret = pthread_create( &rcv_canvas_thread, NULL, rcv_cnvs_thread, NULL);
           if(ret)
@@ -396,7 +417,6 @@ int main(int argc, char *argv[]) {
               cout<<"pthread_create error rcv_cnvs_thread"<<ret<<endl;
               return -1;
           }
-
           break;
       default :
           cout << "Invalid Net Cmd 1" << LedCMDBuff[0] << endl;

@@ -129,9 +129,12 @@ void RGBMatrix::SetNetInterface(string host, unsigned short port, struct net_par
     cout<<"Server Address "<<host_<<" Port "<<port_<<endl;
 
     frame_->SyncSrvr(host, port, params);
-
+#ifndef DEMO_CNVS_SND
     // For Web Interface we do the canvas update in each demo thread.
     // We send the canvas to the server at the end of each loop of the demo.
+    updater_ = new UpdateThread(this);
+    updater_->Start(99);  // Whatever we get :)
+#endif
 }
 // GPIO code
 #else
