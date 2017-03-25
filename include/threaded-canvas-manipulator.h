@@ -58,7 +58,7 @@ namespace rgb_matrix {
 */
 class ThreadedCanvasManipulator : public Thread {
 public:
-  ThreadedCanvasManipulator(Canvas *m) : running_(true), canvas_(m) {}
+  ThreadedCanvasManipulator(Canvas *m) : runonce_(true), running_(true), canvas_(m) {}
   virtual ~ThreadedCanvasManipulator() {  Stop(); }
 
   // Stop the thread at the next possible time Run() checks the running_ flag.
@@ -71,6 +71,7 @@ public:
   virtual void Run() = 0;
 
 protected:
+    bool runonce_;
     inline Canvas *canvas() { return canvas_; }
     inline bool running() {
     MutexLock l(&mutex_);

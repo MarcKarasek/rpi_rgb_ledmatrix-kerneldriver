@@ -113,7 +113,8 @@ public:
 class SimpleSquare : public ThreadedCanvasManipulator {
 public:
   SimpleSquare(Canvas *m) : ThreadedCanvasManipulator(m) {}
-  void Run() {
+  void Run()
+  {
     const int width = canvas()->width();
     const int height = canvas()->height();
     // Diagonal
@@ -130,7 +131,12 @@ public:
       canvas()->SetPixel(width - 1, y, 0, 255, 0);      // right line: green
     }
 #ifdef DEMO_CNVS_SND
-    canvas()->SendCnvs();
+    if (runonce_)
+    {
+        cout<<"Dumping square once to server"<<endl;
+        canvas()->SendCnvs();
+        runonce_ = false;
+    }
 #endif
   }
 };
