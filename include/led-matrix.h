@@ -70,6 +70,7 @@ public:
   virtual void StopSrvr();
   virtual void DisConnSrvr();
   virtual void SendCnvs();
+  virtual void CloseTCPConn();
 #endif
   virtual void Fill(uint8_t red, uint8_t green, uint8_t blue);
 

@@ -52,6 +52,7 @@ public:
   virtual void StopSrvr() { delegatee_->StopSrvr(); }
   virtual void DisConnSrvr() { delegatee_->DisConnSrvr(); }
   virtual void SendCnvs() { delegatee_->SendCnvs(); }
+  virtual void CloseTCPConn() { delegatee_->CloseTCPConn(); }
   virtual void Fill(uint8_t red, uint8_t green, uint8_t blue) {
     delegatee_->Fill(red, green, blue);
   }
@@ -139,6 +140,7 @@ public:
     }
 #endif
   }
+
 };
 
 class GrayScaleBlock : public ThreadedCanvasManipulator {
@@ -1283,6 +1285,7 @@ int main(int argc, char *argv[]) {
               // make sure the dispaly is cleared
               canvas->Clear();
               canvas->SendCnvs();
+              canvas->CloseTCPConn();
               sleep(2);
               canvas->StopSrvr();
               break;
@@ -1291,6 +1294,7 @@ int main(int argc, char *argv[]) {
               // make sure the dispaly is cleared
               canvas->Clear();
               canvas->SendCnvs();
+              canvas->CloseTCPConn();
               sleep(2);
               canvas->DisConnSrvr();
               exit_pgm = true;

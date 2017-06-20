@@ -46,6 +46,8 @@ int ret;
 
 unsigned short LedSrvrPort;
 
+static bool tcpopen = false;
+
 enum {
   kBitPlanes = 11  // maximum usable bitplanes.
 };
@@ -171,14 +173,31 @@ void DumpToMatrix(int fd)
 // TCP client handling function
 void HandleTCPClient(TCPSocket *tcpsock) {
   int recvMsgSize;
-
 #ifdef RCV_BUFFER
-  while ((recvMsgSize = tcpsock->recv(net_bitplane_rcv_buffer_ptr, NET_BUFFER)) > 0) {} // Zero means end of transmission
-#else
-  while ((recvMsgSize = tcpsock->recv(net_bitplane_buffer_ptr, NET_BUFFER)) > 0) {} // Zero means end of transmission
+  int recvMsgPart=0;
 #endif
-  if(recvMsgSize != 0)
-      cout<<"Buffer Rcv Error"<<endl;
+
+  // Got a connect from the client -- look for data.
+  tcpopen = true;
+
+  while(tcpopen)
+  {
+    #ifdef RCV_BUFFER
+      while ((recvMsgSize = tcpsock->recv(net_bitplane_rcv_buffer_ptr, NET_BUFFER)) > 0) {
+          recvMsgPart += recvMsgSize;
+          if (recvMsgPart == NET_BUFFER)
+          {
+             memcpy(net_bitplane_buffer_ptr, net_bitplane_rcv_buffer_ptr, NET_BUFFER);
+             memset(net_bitplane_rcv_buffer_ptr, 0x00, NET_BUFFER);
+             recvMsgPart = 0;
+          }
+      } // Zero means end of transmission
+    #else
+      while ((recvMsgSize = tcpsock->recv(net_bitplane_buffer_ptr, NET_BUFFER)) > 0) {} // Zero means end of transmission
+    #endif
+      if(recvMsgSize != 0)
+          cout<<"Buffer Rcv Error"<<endl;
+  }
 
   delete tcpsock;
 }
@@ -191,11 +210,6 @@ void *rcv_cnvs_thread(void * arg)
         TCPServerSocket servSock(LedSrvrPort);     // Server Socket object
         for (;;) {   // Run forever
              HandleTCPClient(servSock.accept());       // Wait for a client to connect
-#ifdef RCV_BUFFER
-             // Copy the rcved buffer to the real one.
-             memcpy(net_bitplane_buffer_ptr, net_bitplane_rcv_buffer_ptr, NET_BUFFER);
-             memset(net_bitplane_rcv_buffer_ptr, 0x00, NET_BUFFER);
-#endif
         }
     } catch (SocketException &e) {
         cerr << e.what() << endl;
@@ -311,6 +325,9 @@ int main(int argc, char *argv[]) {
 
       switch(LedCMDBuff[0])
       {
+      case NET_TCPSTOP:
+          tcpopen = false;
+          break;
       case NET_WRMSKBITS :
           // cout<<"NET_WRMSKBITS"<<endl;
           pset_bits_vals = (struct set_bits *)(&LedCMDBuff[0]);
@@ -395,6 +412,8 @@ int main(int argc, char *argv[]) {
 #ifdef RCV_BUFFER
           net_bitplane_rcv_buffer_ptr = new IoBits [double_rows * columns * kBitPlanes];
 #endif
+          cout<<"IoBits Size "<<sizeof(IoBits)<<endl;
+
           // Clear out the buffer
           Clear();
 

@@ -50,6 +50,10 @@ int value;
 
 static const long kBaseTimeNanos = 200;
 
+// Flag set when we open the TCP connection for the first time
+// This is done on first call to DumpToWeb() API.
+static bool tcpopen_flag = false;
+
 volatile uint32_t *freeRunTimer = NULL; // GPIO may override on startup
 
 #ifndef LED_SCKT_INTERFACE
@@ -220,8 +224,33 @@ bool RGBMatrix::Framebuffer::SyncSrvr(string host, unsigned short port, struct n
           cout<<"Need to set the host:port"<<endl;
           return false;
       }
+      // Send on UDP the Control Parameters.
       sock.sendTo(params, sizeof(net_parameters), host, port);
       return true;
+
+
+}
+// One time call to open the socket to the server..
+void RGBMatrix::Framebuffer::OpenTCPConnection(string host, unsigned short port) {
+#if 0
+try {
+      // Establish the TCP Connection for data
+      tcpsock.connect(host, port);
+      cout<<"TCP Connection Established "<<host<<" "<<port<<endl;
+
+    }   catch(SocketException &e) {
+        cerr << e.what() << endl;
+        cout << "TCP Send Error" << endl;
+    }
+#endif
+}
+// Turn off the flag that for TCP connect()
+void RGBMatrix::Framebuffer::CloseTCP(string host, unsigned short port) {
+
+    nval.netopcode = NET_TCPSTOP;
+    nval.value = 0;
+    sock.sendTo(&nval, sizeof(net_value), host, port);
+    tcpopen_flag = false;
 }
 #endif
 
@@ -229,8 +258,13 @@ bool RGBMatrix::Framebuffer::SyncSrvr(string host, unsigned short port, struct n
 void RGBMatrix::Framebuffer::DumpToWeb(string host, unsigned short port) {
 
 try {
-    // Establish connection with the led server
-    TCPSocket tcpsock(host, port);
+
+    if(!tcpopen_flag) {
+        // Establish the TCP Connection for data
+        tcpsock.connect(host, port);
+        cout<<"TCP Connection Established "<<host<<" "<<port<<endl;
+        tcpopen_flag = true;
+    }
 
     // Send the current buffer to server
     tcpsock.send(bitplane_buffer_, NET_BUFFER);

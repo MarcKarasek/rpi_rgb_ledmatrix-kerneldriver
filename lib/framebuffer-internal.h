@@ -50,6 +50,10 @@ public:
     void DCSrvr(string host, unsigned short port);
     // We are either Dumping the Matrix to a TCP Socket or GPIOs
     void DumpToWeb(string host, unsigned short port);
+    // open TCP connection. One time event
+    void OpenTCPConnection(string host, unsigned short port);
+    // Close the TCP by unsetting the flag
+    void CloseTCP(string host, unsigned short port);
 #else
     void DumpToMatrix(int fd);
 #endif
@@ -65,7 +69,11 @@ public:
 private:
 
 #ifdef LED_SCKT_INTERFACE
+  // Create The UDP Socket used as a control channel
   UDPSocket sock;
+
+  // Create the TCP Socket to send data on
+  TCPSocket tcpsock;
 
   struct net_value nval;
   int value;

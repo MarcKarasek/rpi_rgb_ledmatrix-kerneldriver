@@ -180,6 +180,7 @@ void RGBMatrix::Clear() { return frame_->Clear(); }
 void RGBMatrix::StopSrvr() { return frame_->KillSrvr(host_, port_); }
 void RGBMatrix::DisConnSrvr() { return frame_->DCSrvr(host_, port_); }
 void RGBMatrix::SendCnvs() { return frame_->DumpToWeb(host_, port_); }
+void RGBMatrix::CloseTCPConn() { return frame_->CloseTCP(host_, port_); }
 #endif
 void RGBMatrix::Fill(uint8_t red, uint8_t green, uint8_t blue) {
   frame_->Fill(red, green, blue);

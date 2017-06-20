@@ -43,6 +43,7 @@ public:
   virtual void StopSrvr() = 0;
   virtual void DisConnSrvr() = 0;
   virtual void SendCnvs() = 0;
+  virtual void CloseTCPConn() = 0;
 #endif
 
   // Fill screen with given 24bpp color.

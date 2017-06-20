@@ -18,6 +18,7 @@
  */
 
 #include "PracticalSocket.h"
+#include <iostream>          // For cout and cerr
 
 #ifdef WIN32
   #include <winsock.h>         // For socket(), connect(), send(), and recv()
@@ -97,6 +98,8 @@ Socket::Socket(int type, int protocol) throw(SocketException) {
   if ((sockDesc = socket(PF_INET, type, protocol)) < 0) {
     throw SocketException("Socket creation failed (socket())", true);
   }
+
+  cout<<"New Socket "<<sockDesc<<endl;
 }
 
 Socket::Socket(int sockDesc) {
