@@ -229,6 +229,40 @@ public:
       throw(SocketException);
 
   /**
+   *   Construct a TCP socket for use with a server,
+   *   This will create the socket to be later initialized.
+   *   This is so you can specify the port later and call the init
+   *   below with the port.
+   *   @exception SocketException thrown if unable to create TCP
+   *                            server socket
+   */
+  TCPServerSocket() throw(SocketException);
+
+  /**
+   *   Initialize the TCP Socket creatd with the above
+   *   TCPServerSocket() accepting connections on the specified
+   *   port on any interface.
+   *   @param localPort local port of server socket, a value of zero will
+   *                   give a system-assigned unused port
+   *   @param queueLen maximum queue length for outstanding
+   *                   connection requests (default 5)
+   *   @exception SocketException thrown if unable to create TCP server socket
+   */
+   void init(unsigned short localPort, int queueLen = 5) throw(SocketException);
+
+  /**
+   *   Initialize the TCP Socket creatd with the above
+   *   TCPServerSocket() accepting connections
+   *   on the specified port on the interface specified by the given address
+   *   @param localAddress local interface (address) of server socket
+   *   @param localPort local port of server socket
+   *   @param queueLen maximum queue length for outstanding
+   *                   connection requests (default 5)
+   *   @exception SocketException thrown if unable to create TCP server socket
+   */
+   void init(const string &localAddress, unsigned short localPort, int queueLen = 5) throw(SocketException);
+
+  /**
    *   Construct a TCP socket for use with a server, accepting connections
    *   on the specified port on the interface specified by the given address
    *   @param localAddress local interface (address) of server socket

@@ -29,9 +29,8 @@ const int CMDMAX = 525;     // Biggest Buffer should be 500.. pad it a little
 
 struct net_parameters client_params;
 union IoBits *net_bitplane_buffer_ptr;
-#ifdef RCV_BUFFER
 union IoBits *net_bitplane_rcv_buffer_ptr;
-#endif
+union IoBits *net_bitplane_accum_buffer_ptr;
 struct set_bits *pset_bits_vals;
 int *pval;
 
@@ -45,6 +44,8 @@ pthread_t canvas_thread;
 int ret;
 
 unsigned short LedSrvrPort;
+
+TCPServerSocket servSock;
 
 static bool tcpopen = false;
 
@@ -173,28 +174,32 @@ void DumpToMatrix(int fd)
 // TCP client handling function
 void HandleTCPClient(TCPSocket *tcpsock) {
   int recvMsgSize;
-#ifdef RCV_BUFFER
   int recvMsgPart=0;
-#endif
 
   // Got a connect from the client -- look for data.
   tcpopen = true;
 
   while(tcpopen)
   {
-    #ifdef RCV_BUFFER
       while ((recvMsgSize = tcpsock->recv(net_bitplane_rcv_buffer_ptr, NET_BUFFER)) > 0) {
-          recvMsgPart += recvMsgSize;
+          if(recvMsgSize == NET_BUFFER)
+          {
+              memcpy(net_bitplane_buffer_ptr, net_bitplane_rcv_buffer_ptr, NET_BUFFER);
+              memset(net_bitplane_rcv_buffer_ptr, 0x00, NET_BUFFER);
+          }
+          else
+          {
+              memcpy(((unsigned char *)net_bitplane_accum_buffer_ptr)+recvMsgPart, net_bitplane_rcv_buffer_ptr, recvMsgSize);
+              memset(net_bitplane_rcv_buffer_ptr, 0x00, recvMsgSize);
+              recvMsgPart+=recvMsgSize;
+          }
           if (recvMsgPart == NET_BUFFER)
           {
-             memcpy(net_bitplane_buffer_ptr, net_bitplane_rcv_buffer_ptr, NET_BUFFER);
-             memset(net_bitplane_rcv_buffer_ptr, 0x00, NET_BUFFER);
+             memcpy(net_bitplane_buffer_ptr, net_bitplane_accum_buffer_ptr, NET_BUFFER);
+             memset(net_bitplane_accum_buffer_ptr, 0x00, NET_BUFFER);
              recvMsgPart = 0;
           }
       } // Zero means end of transmission
-    #else
-      while ((recvMsgSize = tcpsock->recv(net_bitplane_buffer_ptr, NET_BUFFER)) > 0) {} // Zero means end of transmission
-    #endif
       if(recvMsgSize != 0)
           cout<<"Buffer Rcv Error"<<endl;
   }
@@ -207,7 +212,7 @@ void *rcv_cnvs_thread(void * arg)
 {
     cout<<"rcv_cnvs_thread enter"<<endl;
     try {
-        TCPServerSocket servSock(LedSrvrPort);     // Server Socket object
+//        TCPServerSocket servSock(LedSrvrPort);     // Server Socket object
         for (;;) {   // Run forever
              HandleTCPClient(servSock.accept());       // Wait for a client to connect
         }
@@ -289,7 +294,6 @@ void Clear( void )
 #endif
 }
 
-
 int main(int argc, char *argv[]) {
 
   if (argc != 2) {                  // Test for correct number of parameters
@@ -302,7 +306,13 @@ int main(int argc, char *argv[]) {
   SetGPIO();
 
   try {
+    // UDP Socket for Sending Commands to Server
     UDPSocket sock(LedSrvrPort);
+
+    // Create the server socket based on port
+//    TCPServerSocket servSock(LedSrvrPort);     // Server Socket object
+
+    servSock.init(LedSrvrPort);
 
     char LedCMDBuff[CMDMAX];         // Buffer for rcv cmd
     int recvCmdSz;                  // Size of received message
@@ -359,9 +369,8 @@ int main(int argc, char *argv[]) {
           cout<<"All threads exited"<<endl;
           // Reset thread_exit and shutdownsrvr variables
           delete [] net_bitplane_buffer_ptr;
-#ifdef RCV_BUFFER
           delete [] net_bitplane_rcv_buffer_ptr;
-#endif
+          delete [] net_bitplane_accum_buffer_ptr;
           break;
       case NET_KILLSRVR :
           cout<<"Stopping Server -- Rcvd Stop Cmd from Client"<<endl;
@@ -374,9 +383,8 @@ int main(int argc, char *argv[]) {
           pthread_join(rcv_canvas_thread, NULL);
           cout<<"All threads exited"<<endl;
           delete [] net_bitplane_buffer_ptr;
-#ifdef RCV_BUFFER
           delete [] net_bitplane_rcv_buffer_ptr;
-#endif
+          delete [] net_bitplane_accum_buffer_ptr;
           close(fd);
           exit(0);
           break;
@@ -409,10 +417,8 @@ int main(int argc, char *argv[]) {
           // but it allows easy access in the critical section.
           //  NOTE:  This is the buffer that is copied into from the packets received via TCP
           net_bitplane_buffer_ptr = new IoBits [double_rows * columns * kBitPlanes];
-#ifdef RCV_BUFFER
           net_bitplane_rcv_buffer_ptr = new IoBits [double_rows * columns * kBitPlanes];
-#endif
-          cout<<"IoBits Size "<<sizeof(IoBits)<<endl;
+          net_bitplane_accum_buffer_ptr = new IoBits [double_rows * columns * kBitPlanes];
 
           // Clear out the buffer
           Clear();

@@ -104,9 +104,7 @@ public:
       }
       canvas()->Fill(r, g, b);
 
-#ifdef DEMO_CNVS_SND
       canvas()->SendCnvs();
-#endif
     }
   }
 };
@@ -131,14 +129,13 @@ public:
       canvas()->SetPixel(0, y, 0, 0, 255);              // left line: blue
       canvas()->SetPixel(width - 1, y, 0, 255, 0);      // right line: green
     }
-#ifdef DEMO_CNVS_SND
+
     if (runonce_)
     {
         cout<<"Dumping square once to server"<<endl;
         canvas()->SendCnvs();
         runonce_ = false;
     }
-#endif
   }
 
 };
@@ -167,9 +164,8 @@ public:
       }
       count++;
       sleep(2);
-#ifdef DEMO_CNVS_SND
+
       canvas()->SendCnvs();
-#endif
     }
   }
 };
@@ -224,9 +220,7 @@ public:
           }
         }
       }
-#ifdef DEMO_CNVS_SND
       canvas()->SendCnvs();
-#endif
     }
   }
 
@@ -327,9 +321,7 @@ public:
       {
         usleep(scroll_ms_ * 1000);
       }
-#ifdef DEMO_CNVS_SND
       canvas()->SendCnvs();
-#endif
     }
   }
 
@@ -447,9 +439,7 @@ public:
         }
       }
       usleep(delay_ms_ * 1000); // ms
-#ifdef DEMO_CNVS_SND
       canvas()->SendCnvs();
-#endif
     }
   }
 
@@ -566,9 +556,7 @@ public:
         }
       }
       usleep(delay_ms_ * 1000); // ms
-#ifdef DEMO_CNVS_SND
       canvas()->SendCnvs();
-#endif
     }
   }
 
@@ -720,9 +708,7 @@ public:
         return;
       updatePixel(antX_, antY_);
       usleep(delay_ms_ * 1000);
-#ifdef DEMO_CNVS_SND
       canvas()->SendCnvs();
-#endif
     }
   }
 
@@ -843,9 +829,7 @@ public:
         }
       }
       usleep(delay_ms_ * 1000);
-#ifdef DEMO_CNVS_SND
       canvas()->SendCnvs();
-#endif
     }
   }
 
@@ -1291,7 +1275,7 @@ int main(int argc, char *argv[]) {
               break;
           case 11:
               cout<<"Exiting Client Server is still running"<<endl;
-              // make sure the dispaly is cleared
+              // make sure the display is cleared
               canvas->Clear();
               canvas->SendCnvs();
               canvas->CloseTCPConn();

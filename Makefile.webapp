@@ -17,11 +17,6 @@ LDFLAGS+=-L$(RGB_LIBDIR) -l$(RGB_LIBRARY_NAME) -L$(SOCKET_LIBDIR) -l$(SOCKET_LIB
 
 # Web Server Client define
 CXXFLAGS+=-DLED_SCKT_INTERFACE
-# Separate buffer for rcv
-CXXFLAGS+=-DRCV_BUFFER
-# Demos send canvas at the end of each loop (new canvas) to server.
-# If undefined then a separate thread will send the packets in the background
-CXXFLAGS+=-DDEMO_CNVS_SND
 
 all : $(WEBBINARIES)
 

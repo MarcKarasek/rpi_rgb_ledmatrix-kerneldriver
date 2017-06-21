@@ -98,8 +98,6 @@ Socket::Socket(int type, int protocol) throw(SocketException) {
   if ((sockDesc = socket(PF_INET, type, protocol)) < 0) {
     throw SocketException("Socket creation failed (socket())", true);
   }
-
-  cout<<"New Socket "<<sockDesc<<endl;
 }
 
 Socket::Socket(int sockDesc) {
@@ -253,6 +251,10 @@ TCPSocket::TCPSocket(int newConnSD) : CommunicatingSocket(newConnSD) {
 
 // TCPServerSocket Code
 
+TCPServerSocket::TCPServerSocket()
+    throw(SocketException) : Socket(SOCK_STREAM, IPPROTO_TCP) {
+}
+
 TCPServerSocket::TCPServerSocket(unsigned short localPort, int queueLen)
     throw(SocketException) : Socket(SOCK_STREAM, IPPROTO_TCP) {
   setLocalPort(localPort);
@@ -263,6 +265,16 @@ TCPServerSocket::TCPServerSocket(const string &localAddress,
     unsigned short localPort, int queueLen)
     throw(SocketException) : Socket(SOCK_STREAM, IPPROTO_TCP) {
   setLocalAddressAndPort(localAddress, localPort);
+  setListen(queueLen);
+}
+
+void TCPServerSocket::init(const string &localAddress, unsigned short localPort, int queueLen) throw(SocketException) {
+  setLocalAddressAndPort(localAddress, localPort);
+  setListen(queueLen);
+}
+
+void TCPServerSocket::init(unsigned short localPort, int queueLen) throw(SocketException) {
+  setLocalPort(localPort);
   setListen(queueLen);
 }
 
