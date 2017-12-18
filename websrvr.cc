@@ -22,8 +22,12 @@
 #include "kmod_common.h"
 #include "web_defines.h"
 #include "cie1931.h"
+#include "thread.h"
+
 
 using namespace std;
+
+using namespace rgb_matrix;
 
 const int CMDMAX = 525;     // Biggest Buffer should be 500.. pad it a little
 
@@ -47,7 +51,10 @@ unsigned short LedSrvrPort;
 
 TCPServerSocket servSock;
 
-static bool tcpopen = false;
+volatile static bool tcplisten = false;
+
+// Mutex so cnvs_thread and rcv_cnvs_thread do not clash over buffer
+Mutex mutex_buffer_;
 
 enum {
   kBitPlanes = 11  // maximum usable bitplanes.
@@ -133,13 +140,13 @@ void DumpToMatrix(int fd)
     // Rows can't be switched very quickly without ghosting, so we do the
     // full PWM of one row before switching rows.
     for (int b = kBitPlanes - pwm_to_show; b < kBitPlanes; ++b) {
-      IoBits *row_data = ValueAt(d_row, 0, b);
-
+        IoBits *row_data = ValueAt(d_row, 0, b);
       // We clock these in while we are dark. This actually increases the
       // dark time, but we ignore that a bit.
       for (int col = 0; col < columns; ++col) {
-        const IoBits &out = *row_data++;
-
+          mutex_buffer_.Lock();
+          const IoBits &out = *row_data++;
+          mutex_buffer_.Unlock();
         // col + reset clock
         set_bits_vals.mask = color_clk_mask.raw;
         set_bits_vals.value = out.raw;
@@ -175,17 +182,57 @@ void DumpToMatrix(int fd)
 void HandleTCPClient(TCPSocket *tcpsock) {
   int recvMsgSize;
   int recvMsgPart=0;
+  int over;
+  int under;
 
   // Got a connect from the client -- look for data.
-  tcpopen = true;
+  tcplisten = true;
+  cout<<"TCP Connection Rvcd"<<endl;
 
-  while(tcpopen)
+  // Loop to process packets.. recv will block until receive..
   {
       while ((recvMsgSize = tcpsock->recv(net_bitplane_rcv_buffer_ptr, NET_BUFFER)) > 0) {
           if(recvMsgSize == NET_BUFFER)
           {
+              // Corner case where the two buffer parts == NET_BUFFER
+              if(recvMsgPart != 0)
+              {
+                  cout<<"Corner Case"<<endl;
+                  under = NET_BUFFER - recvMsgPart;
+                  over = NET_BUFFER - under;
+                  cout<<"recvMsgPart = "<<recvMsgPart<<endl;
+                  cout<<"recvMsgSize ="<<recvMsgSize<<endl;
+                  cout<<"over = "<<over<<endl;
+                  cout<<"under = "<<under<<endl;
+                  memcpy(((unsigned char *)net_bitplane_accum_buffer_ptr)+recvMsgPart, net_bitplane_rcv_buffer_ptr, under);
+                  mutex_buffer_.Lock();
+                  memcpy(net_bitplane_buffer_ptr, net_bitplane_accum_buffer_ptr, NET_BUFFER);
+                  mutex_buffer_.Unlock();
+                  memset(net_bitplane_accum_buffer_ptr, 0x00, NET_BUFFER);
+                  memcpy(((unsigned char *)net_bitplane_accum_buffer_ptr), net_bitplane_rcv_buffer_ptr+under, over);
+                  recvMsgPart = over;
+              }
+              mutex_buffer_.Lock();
               memcpy(net_bitplane_buffer_ptr, net_bitplane_rcv_buffer_ptr, NET_BUFFER);
+              mutex_buffer_.Unlock();
               memset(net_bitplane_rcv_buffer_ptr, 0x00, NET_BUFFER);
+          }
+          else if ((recvMsgPart+recvMsgSize) > NET_BUFFER)
+          {
+              cout<<"Buffer overrun"<<endl;
+              over = (recvMsgPart + recvMsgSize) - NET_BUFFER;
+              under = recvMsgSize - over;
+              cout<<"recvMsgPart = "<<recvMsgPart<<endl;
+              cout<<"recvMsgSize ="<<recvMsgSize<<endl;
+              cout<<"over = "<<over<<endl;
+              cout<<"under = "<<under<<endl;
+              memcpy(((unsigned char *)net_bitplane_accum_buffer_ptr)+recvMsgPart, net_bitplane_rcv_buffer_ptr, under);
+              mutex_buffer_.Lock();
+              memcpy(net_bitplane_buffer_ptr, net_bitplane_accum_buffer_ptr, NET_BUFFER);
+              mutex_buffer_.Unlock();
+              memset(net_bitplane_accum_buffer_ptr, 0x00, NET_BUFFER);
+              memcpy(((unsigned char *)net_bitplane_accum_buffer_ptr), net_bitplane_rcv_buffer_ptr+under, over);
+              recvMsgPart = over;
           }
           else
           {
@@ -195,7 +242,9 @@ void HandleTCPClient(TCPSocket *tcpsock) {
           }
           if (recvMsgPart == NET_BUFFER)
           {
+             mutex_buffer_.Lock();
              memcpy(net_bitplane_buffer_ptr, net_bitplane_accum_buffer_ptr, NET_BUFFER);
+             mutex_buffer_.Unlock();
              memset(net_bitplane_accum_buffer_ptr, 0x00, NET_BUFFER);
              recvMsgPart = 0;
           }
@@ -204,7 +253,10 @@ void HandleTCPClient(TCPSocket *tcpsock) {
           cout<<"Buffer Rcv Error"<<endl;
   }
 
+  cout<<"TCP Connection Closed"<<endl;
+
   delete tcpsock;
+  tcplisten = false;
 }
 
 // Thread to receive packets via TCP from Client
@@ -217,6 +269,7 @@ void *rcv_cnvs_thread(void * arg)
              HandleTCPClient(servSock.accept());       // Wait for a client to connect
         }
     } catch (SocketException &e) {
+        cout << "rcv_cnvs_thread" << endl;
         cerr << e.what() << endl;
         exit(1);
     }
@@ -276,10 +329,12 @@ void Fill(uint8_t r, uint8_t g, uint8_t b)
     for (row = 0; row < double_rows; ++row)
     {
       row_data = ValueAt(row, 0, x);
+      mutex_buffer_.Lock();
       for (col = 0; col < columns; ++col)
       {
         (row_data++)->raw = plane_bits.raw;
       }
+      mutex_buffer_.Unlock();
     }
   }
 }
@@ -336,7 +391,14 @@ int main(int argc, char *argv[]) {
       switch(LedCMDBuff[0])
       {
       case NET_TCPSTOP:
-          tcpopen = false;
+          //cout<<"NET_TCPSTOP1"<<endl;
+          // If we get a stop from the client, clear the display
+          // Wait for the tcpsock to stop listening..
+          while(tcplisten){
+          //cout<<"NET_TCPSTOP21"<<endl;
+          }
+          //cout<<"NET_TCPSTOP2"<<endl;
+          Clear();
           break;
       case NET_WRMSKBITS :
           // cout<<"NET_WRMSKBITS"<<endl;
@@ -450,8 +512,9 @@ int main(int argc, char *argv[]) {
       }
     }
   } catch (SocketException &e) {
-    cerr << e.what() << endl;
-    exit(1);
+      cout<<"socket err"<<endl;
+      cerr << e.what() << endl;
+      exit(1);
   }
 
   return 0;
