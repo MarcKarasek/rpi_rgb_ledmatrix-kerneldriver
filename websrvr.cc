@@ -24,6 +24,8 @@
 #include "cie1931.h"
 #include "thread.h"
 
+// Turn this on to see debug output
+//#define DEBUG
 
 using namespace std;
 
@@ -197,20 +199,23 @@ void HandleTCPClient(TCPSocket *tcpsock) {
               // Corner case where the two buffer parts == NET_BUFFER
               if(recvMsgPart != 0)
               {
-                  cout<<"Corner Case"<<endl;
                   under = NET_BUFFER - recvMsgPart;
                   over = NET_BUFFER - under;
+#ifdef DEBUG
+                  cout<<"Corner Case"<<endl;
                   cout<<"recvMsgPart = "<<recvMsgPart<<endl;
                   cout<<"recvMsgSize ="<<recvMsgSize<<endl;
                   cout<<"over = "<<over<<endl;
                   cout<<"under = "<<under<<endl;
+#endif
                   memcpy(((unsigned char *)net_bitplane_accum_buffer_ptr)+recvMsgPart, net_bitplane_rcv_buffer_ptr, under);
                   mutex_buffer_.Lock();
                   memcpy(net_bitplane_buffer_ptr, net_bitplane_accum_buffer_ptr, NET_BUFFER);
                   mutex_buffer_.Unlock();
                   memset(net_bitplane_accum_buffer_ptr, 0x00, NET_BUFFER);
-                  memcpy(((unsigned char *)net_bitplane_accum_buffer_ptr), net_bitplane_rcv_buffer_ptr+under, over);
+                  memcpy(((unsigned char *)net_bitplane_accum_buffer_ptr), (unsigned char *)net_bitplane_rcv_buffer_ptr+under, over);
                   recvMsgPart = over;
+                  continue;
               }
               mutex_buffer_.Lock();
               memcpy(net_bitplane_buffer_ptr, net_bitplane_rcv_buffer_ptr, NET_BUFFER);
@@ -219,23 +224,28 @@ void HandleTCPClient(TCPSocket *tcpsock) {
           }
           else if ((recvMsgPart+recvMsgSize) > NET_BUFFER)
           {
-              cout<<"Buffer overrun"<<endl;
               over = (recvMsgPart + recvMsgSize) - NET_BUFFER;
               under = recvMsgSize - over;
+#ifdef DEBUG
+              cout<<"Buffer overlap"<<endl;
               cout<<"recvMsgPart = "<<recvMsgPart<<endl;
               cout<<"recvMsgSize ="<<recvMsgSize<<endl;
               cout<<"over = "<<over<<endl;
               cout<<"under = "<<under<<endl;
+#endif
               memcpy(((unsigned char *)net_bitplane_accum_buffer_ptr)+recvMsgPart, net_bitplane_rcv_buffer_ptr, under);
               mutex_buffer_.Lock();
               memcpy(net_bitplane_buffer_ptr, net_bitplane_accum_buffer_ptr, NET_BUFFER);
               mutex_buffer_.Unlock();
               memset(net_bitplane_accum_buffer_ptr, 0x00, NET_BUFFER);
-              memcpy(((unsigned char *)net_bitplane_accum_buffer_ptr), net_bitplane_rcv_buffer_ptr+under, over);
+              memcpy(((unsigned char *)net_bitplane_accum_buffer_ptr), (unsigned char *)net_bitplane_rcv_buffer_ptr+under, over);
               recvMsgPart = over;
           }
           else
           {
+#ifdef DEBUG
+              cout<<"recvMsgSize ="<<recvMsgSize<<endl;
+#endif
               memcpy(((unsigned char *)net_bitplane_accum_buffer_ptr)+recvMsgPart, net_bitplane_rcv_buffer_ptr, recvMsgSize);
               memset(net_bitplane_rcv_buffer_ptr, 0x00, recvMsgSize);
               recvMsgPart+=recvMsgSize;
@@ -269,7 +279,6 @@ void *rcv_cnvs_thread(void * arg)
              HandleTCPClient(servSock.accept());       // Wait for a client to connect
         }
     } catch (SocketException &e) {
-        cout << "rcv_cnvs_thread" << endl;
         cerr << e.what() << endl;
         exit(1);
     }
