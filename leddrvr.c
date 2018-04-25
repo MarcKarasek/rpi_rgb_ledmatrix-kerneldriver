@@ -13,7 +13,7 @@
 #include <linux/ioport.h>
 #include <asm/uaccess.h>
 #include <asm/io.h>
-#include <mach/platform.h>
+//#include <mach/platform.h>
 #include <linux/gpio.h>
 #include <linux/slab.h>
 #include <linux/mutex.h>
@@ -121,32 +121,18 @@ uint32_t gpio_base;
 
 // Set the bits that are '1' in the output. Leave the rest untouched.
 void SetBits(uint32_t value) {
-#ifdef GPIO_SYSFS
-    uint32_t b;
-    for (b = 0; b <= 27; ++b)
-        if (value & (1 << b))
-            gpio_set_value(b, true);
-#else
     volatile uint8_t i = writeCycles;
     do {
       gpio_port_[0x1C / sizeof(uint32_t)] = value;
     } while(--i);
-#endif
 }
 
 // Clear the bits that are '1' in the output. Leave the rest untouched.
 void ClearBits(uint32_t value) {
-#ifdef GPIO_SYSFS
-    uint32_t b;
-    for (b = 0; b <= 27; ++b)
-        if (value & (1 << b))
-            gpio_set_value(b, false);
-#else
     volatile uint8_t i = writeCycles;
     do {
       gpio_port_[0x28 / sizeof(uint32_t)] = value;
     } while(--i);
-#endif
 }
 
 
@@ -167,25 +153,7 @@ union IoBits * ValueAt(int double_row, int column, int bit)
 
 uint32_t InitOutputs(uint32_t outputs)
 {
-    uint32_t b;
-#ifdef GPIO_SYSFS
-    static bool gpiooff;
-    for (b = 0; b <= 27; ++b)
-    {
-        if (outputs & (1 << b))
-        {
-            if(gpio_is_valid(b))
-            {
-                gpio_request(b, "sysfs");
-                gpio_direction_output(b, gpiooff);
-                gpio_export(b, false);
-            }
-        }
-    }
-    output_bits_ = outputs;
-    return output_bits_;
-#else
-
+  uint32_t b;
   if (gpio_port_ == NULL) {
     printk(KERN_EMERG  "Attempt to init outputs but initialized.\n");
     return 0;
@@ -199,7 +167,6 @@ uint32_t InitOutputs(uint32_t outputs)
     }
   }
   return output_bits_;
-#endif
 }
 
 void InitGPIO( void )
@@ -234,7 +201,6 @@ void InitGPIO( void )
 
 int gpio_init(void)
 {
-#ifndef GPIO_SYSFS
   if(board == 2) { // Raspberry Pi 2?
     gpio_base   = 0x3F000000 + 0x200000; // GPIO base addr for Pi 2
     writeCycles = 2;
@@ -246,7 +212,6 @@ int gpio_init(void)
     gpio_base   = 0x20000000 + 0x200000; // " for Pi 1
     writeCycles = 1;
   }
-#endif
 // On PI the GPIO region is already requested by the bcm2835_gpiomem driver
 // So we will skip the request/release and just ioremap it.
 #ifdef BCMGPIO_NOT
@@ -258,9 +223,6 @@ int gpio_init(void)
   }
 #endif
 
-#ifdef GPIO_SYSFS
-  printk(KERN_EMERG "No ioremap using gpio_sysfs instead\n");
-#else
   gpio_map = ioremap(gpio_base, BLOCK_SIZE);
   if (gpio_map == NULL)
   {
@@ -269,8 +231,6 @@ int gpio_init(void)
   }
 
   gpio_port_ = (volatile uint32_t *)gpio_map;
-#endif
-
   return 0;
 
 }
@@ -576,6 +536,7 @@ bool alive_check (void)
     mutex_unlock(&(led_device->alive_mutex));
     return cont;
 }
+#endif // #ifdef IMALIVE
 
 struct file_operations led_fops = {
 	.owner =    THIS_MODULE,
@@ -586,7 +547,6 @@ struct file_operations led_fops = {
 	.open =     led_open,
 	.release =  led_release,
 };
-#endif // #ifdef IMALIVE
 
 int init_module(void)
 {
@@ -834,13 +794,11 @@ fail:
 
 void cleanup_module(void)
 {
-#ifndef GPIO_SYSFS
     iounmap(gpio_map);
 // On PI2 the GPIO region is already requested by the bcm2835_gpiomem driver
 // So we will skip the request/release and just ioremap it.
 #ifdef BCMGPIO_NOT
     release_mem_region(gpio_base, BLOCK_SIZE);
-#endif
 #endif
 
     // Unwind and remove the /dev/gpioleddrvr device from the system

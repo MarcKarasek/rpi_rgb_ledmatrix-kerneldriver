@@ -1,0 +1,1 @@
+cmd_/home/pi/source/rpi_rgb_ledmatrix-kerneldriver/leddriver.ko := ld -EL -r  -T ./scripts/module-common.lds --build-id  -o /home/pi/source/rpi_rgb_ledmatrix-kerneldriver/leddriver.ko /home/pi/source/rpi_rgb_ledmatrix-kerneldriver/leddriver.o /home/pi/source/rpi_rgb_ledmatrix-kerneldriver/leddriver.mod.o ;  true
