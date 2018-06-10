@@ -12,6 +12,7 @@
 #include <linux/string.h>
 #include <linux/ioport.h>
 #include <asm/uaccess.h>
+#include <linux/uaccess.h>
 #include <asm/io.h>
 //#include <mach/platform.h>
 #include <linux/gpio.h>
